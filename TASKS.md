@@ -52,13 +52,19 @@ Every ticket below is scoped to be completable in **under two hours**. Tickets a
 
 ## M1 — Auth & Groups
 
-- [ ] **M1-01** Add auth provider (Auth0/Clerk) tenant + app config.
-- [ ] **M1-02** Implement JWT validation guard in the API gateway layer.
-- [ ] **M1-03** Create `users` table + migration.
-- [ ] **M1-04** Implement "resolve/create internal user from token" service.
-- [ ] **M1-05** Build `GET /me` profile endpoint.
-- [ ] **M1-06** Build `PATCH /me` to update name + default currency.
-- [ ] **M1-07** Add `notification_prefs` table + default seeding on signup.
+> **Auth slice (2026-06-28):** M1-02..07 implemented. Verified here: shared
+> validation schemas + the pure claims-mapping unit test. The API build and
+> service tests need `pnpm --filter @splitsmart/api prisma:generate` first
+> (Prisma's engine CDN was blocked in the sandbox). Run `prisma migrate dev`
+> to apply `0000_init_auth`, and configure an OIDC provider for M1-01.
+
+- [ ] **M1-01** Add auth provider (Auth0/Clerk) tenant + app config. *(external: create the tenant; code reads `AUTH_ISSUER_URL`/`AUTH_AUDIENCE`/`AUTH_JWKS_URI`)*
+- [x] **M1-02** Implement JWT validation guard in the API gateway layer. *(`JwtAuthGuard` — JWKS verify, issuer/audience, claims attached)*
+- [x] **M1-03** Create `users` table + migration. *(`User` model + `0000_init_auth` migration)*
+- [x] **M1-04** Implement "resolve/create internal user from token" service. *(`UsersService.resolveFromClaims`)*
+- [x] **M1-05** Build `GET /me` profile endpoint.
+- [x] **M1-06** Build `PATCH /me` to update name + default currency. *(validated with shared `updateMeSchema`)*
+- [x] **M1-07** Add `notification_prefs` table + default seeding on signup. *(`NotificationPref` model + `defaultNotificationPrefs`)*
 - [ ] **M1-08** Mobile: email/password + Google login screen (provider SDK).
 - [ ] **M1-09** Mobile: Apple sign-in integration.
 - [ ] **M1-10** Mobile: token storage + refresh handling.

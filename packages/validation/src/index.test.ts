@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { currencyCodeSchema, moneySchema } from './index';
+import { currencyCodeSchema, moneySchema, authClaimsSchema, updateMeSchema } from './index';
 
 describe('validation', () => {
   it('accepts valid currency codes', () => {
@@ -13,5 +13,18 @@ describe('validation', () => {
 
   it('rejects non-integer money', () => {
     expect(moneySchema.safeParse({ amountMinor: 10.5, currency: 'USD' }).success).toBe(false);
+  });
+
+  it('parses valid auth claims and rejects bad email', () => {
+    expect(authClaimsSchema.safeParse({ sub: 'auth0|1', email: 'a@b.com', name: 'A' }).success).toBe(true);
+    expect(authClaimsSchema.safeParse({ sub: 'auth0|1', email: 'not-an-email' }).success).toBe(false);
+    expect(authClaimsSchema.safeParse({ email: 'a@b.com' }).success).toBe(false); // missing sub
+  });
+
+  it('updateMe requires at least one field and validates currency', () => {
+    expect(updateMeSchema.safeParse({}).success).toBe(false);
+    expect(updateMeSchema.safeParse({ name: 'New' }).success).toBe(true);
+    expect(updateMeSchema.safeParse({ defaultCurrency: 'eur' }).success).toBe(false);
+    expect(updateMeSchema.safeParse({ defaultCurrency: 'EUR' }).success).toBe(true);
   });
 });

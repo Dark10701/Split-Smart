@@ -14,6 +14,25 @@ export const moneySchema = z.object({
 
 export const splitTypeSchema = z.enum(['equal', 'exact', 'percentage', 'shares', 'itemized']);
 
+/** Verified OIDC token claims we rely on to resolve an internal user. */
+export const authClaimsSchema = z.object({
+  sub: z.string().min(1),
+  email: z.string().email(),
+  name: z.string().min(1).optional(),
+});
+export type AuthClaims = z.infer<typeof authClaimsSchema>;
+
+/** PATCH /me body. All fields optional; at least one must be present. */
+export const updateMeSchema = z
+  .object({
+    name: z.string().min(1).max(80).optional(),
+    defaultCurrency: currencyCodeSchema.optional(),
+  })
+  .refine((v) => v.name !== undefined || v.defaultCurrency !== undefined, {
+    message: 'Provide at least one field to update',
+  });
+export type UpdateMeInput = z.infer<typeof updateMeSchema>;
+
 /** Sample contract: create-expense payload. Expanded in later tickets. */
 export const createExpenseSchema = z.object({
   description: z.string().min(1).max(140),
@@ -24,5 +43,4 @@ export const createExpenseSchema = z.object({
   splitType: splitTypeSchema,
   occurredAt: z.string().datetime(),
 });
-
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;

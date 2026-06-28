@@ -1,7 +1,5 @@
-// SplitSmart baseline schema.
-// Domain models (users, groups, expenses, splits, payments, etc.) are added
-// in later milestones per TASKS.md. This baseline only establishes the
-// datasource/generator and a health-check table so migrations are wired up.
+// SplitSmart schema. Money is stored as integer minor units + explicit currency
+// in later milestones; this milestone (M1) adds users and notification prefs.
 
 generator client {
   provider = "prisma-client-js"
@@ -12,8 +10,47 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Trivial table to verify connectivity and migrations in M0.
+/// Connectivity check table (M0).
 model HealthCheck {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
+}
+
+/// An authenticated person. Linked to the OIDC provider via `authSubject`.
+model User {
+  id              String   @id @default(uuid())
+  authSubject     String   @unique // OIDC `sub` claim
+  email           String   @unique
+  name            String
+  defaultCurrency String   @default("USD")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  notificationPrefs NotificationPref[]
+}
+
+enum NotificationChannel {
+  push
+  email
+  sms
+  in_app
+}
+
+enum NotificationType {
+  expense_added
+  settle_up
+  payment_confirmed
+  reminder
+}
+
+/// Per-user delivery preference for a (channel, type) pair.
+model NotificationPref {
+  id      String              @id @default(uuid())
+  userId  String
+  user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel NotificationChannel
+  type    NotificationType
+  enabled Boolean             @default(true)
+
+  @@unique([userId, channel, type])
 }

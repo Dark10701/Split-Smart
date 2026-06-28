@@ -4,16 +4,19 @@ import { join } from 'path';
 import { HealthModule } from './health/health.module';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule } from './redis/redis.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      // Load apps/api/.env first, then fall back to the repo-root .env.
       envFilePath: [join(process.cwd(), '.env'), join(process.cwd(), '../../.env')],
     }),
     DatabaseModule,
     RedisModule,
+    AuthModule,
+    UsersModule,
     HealthModule,
   ],
 })
