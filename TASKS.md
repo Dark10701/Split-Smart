@@ -52,11 +52,13 @@ Every ticket below is scoped to be completable in **under two hours**. Tickets a
 
 ## M1 — Auth & Groups
 
-> **Auth slice (2026-06-28):** M1-02..07 implemented. Verified here: shared
-> validation schemas + the pure claims-mapping unit test. The API build and
-> service tests need `pnpm --filter @splitsmart/api prisma:generate` first
-> (Prisma's engine CDN was blocked in the sandbox). Run `prisma migrate dev`
-> to apply `0000_init_auth`, and configure an OIDC provider for M1-01.
+> **Auth slice (2026-06-28):** M1-02..07 implemented and verified. Tested:
+> API source type-checks clean; full API jest suite passes (users service,
+> health, auth claims); validation schemas build + pass; and the
+> `0000_init_auth` migration was executed against a Postgres engine — FK,
+> unique `(userId,channel,type)`, and enum constraints all enforce correctly.
+> Still to do on a Prisma-enabled machine: `prisma generate` + `prisma migrate
+> dev` against a live Postgres, and configure an OIDC provider for M1-01.
 
 - [ ] **M1-01** Add auth provider (Auth0/Clerk) tenant + app config. *(external: create the tenant; code reads `AUTH_ISSUER_URL`/`AUTH_AUDIENCE`/`AUTH_JWKS_URI`)*
 - [x] **M1-02** Implement JWT validation guard in the API gateway layer. *(`JwtAuthGuard` — JWKS verify, issuer/audience, claims attached)*
