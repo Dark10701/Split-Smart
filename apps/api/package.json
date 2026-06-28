@@ -27,7 +27,8 @@
     "@splitsmart/validation": "workspace:*",
     "class-validator": "^0.14.1",
     "class-transformer": "^0.5.1",
-    "jose": "^5.9.3"
+    "jose": "^5.9.3",
+    "bullmq": "^5.13.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.5",

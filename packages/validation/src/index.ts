@@ -59,6 +59,10 @@ export type AddMemberInput = z.infer<typeof addMemberSchema>;
 export const joinGroupSchema = z.object({ token: z.string().min(1) });
 export type JoinGroupInput = z.infer<typeof joinGroupSchema>;
 
+/** Optional targeted email for an invite. */
+export const inviteSchema = z.object({ email: z.string().email().optional() });
+export type InviteInput = z.infer<typeof inviteSchema>;
+
 /** Sample contract: create-expense payload. Expanded in later tickets. */
 export const createExpenseSchema = z.object({
   description: z.string().min(1).max(140),

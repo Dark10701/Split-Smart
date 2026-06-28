@@ -47,4 +47,28 @@ describe('GroupsService', () => {
     const svc = makeService({ user: { findUnique: jest.fn().mockResolvedValue(null) } });
     await expect(svc.addMember('g1', { email: 'no@one.com', role: 'member' })).rejects.toThrow(/No account/);
   });
+
+  it('createInvite() enqueues an email when an email is given', async () => {
+    const create = jest.fn().mockResolvedValue({ id: 'i1' });
+    const sendInvite = jest.fn().mockResolvedValue(undefined);
+    const svc = new GroupsService(
+      { invitation: { create } } as unknown as PrismaService,
+      { sendInvite },
+    );
+    await svc.createInvite('g1', 'invitee@x.com');
+    expect(sendInvite).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'invitee@x.com', groupId: 'g1' }),
+    );
+  });
+
+  it('createInvite() does not enqueue without an email', async () => {
+    const create = jest.fn().mockResolvedValue({ id: 'i1' });
+    const sendInvite = jest.fn();
+    const svc = new GroupsService(
+      { invitation: { create } } as unknown as PrismaService,
+      { sendInvite },
+    );
+    await svc.createInvite('g1');
+    expect(sendInvite).not.toHaveBeenCalled();
+  });
 });

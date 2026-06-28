@@ -1,5 +1,7 @@
 import {
   Injectable,
+  Optional,
+  Inject,
   BadRequestException,
   ConflictException,
   NotFoundException,
@@ -8,10 +10,14 @@ import type { Group, GroupMember } from '@prisma/client';
 import type { CreateGroupInput, AddMemberInput } from '@splitsmart/validation';
 import { PrismaService } from '../database/prisma.service';
 import { generateInviteToken, isInviteUsable } from './invite';
+import { INVITE_NOTIFIER, type InviteNotifier } from '../queue/invite-notifier';
 
 @Injectable()
 export class GroupsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject(INVITE_NOTIFIER) private readonly notifier?: InviteNotifier,
+  ) {}
 
   /** Create a group and add the creator as its first admin, atomically. */
   async create(creatorUserId: string, input: CreateGroupInput): Promise<Group> {
@@ -54,6 +60,9 @@ export class GroupsService {
   async createInvite(groupId: string, email?: string): Promise<{ token: string }> {
     const token = generateInviteToken();
     await this.prisma.invitation.create({ data: { groupId, token, email: email ?? null } });
+    if (email) {
+      await this.notifier?.sendInvite({ email, token, groupId });
+    }
     return { token };
   }
 

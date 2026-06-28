@@ -14,6 +14,7 @@ import {
   createGroupSchema,
   addMemberSchema,
   joinGroupSchema,
+  inviteSchema,
   type AuthClaims,
 } from '@splitsmart/validation';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -64,8 +65,9 @@ export class GroupsController {
 
   @Post('groups/:id/invite')
   @UseGuards(GroupMembershipGuard)
-  async invite(@Param('id') id: string): Promise<{ token: string }> {
-    return this.groups.createInvite(id);
+  async invite(@Param('id') id: string, @Body() body: unknown): Promise<{ token: string }> {
+    const { email } = validate(inviteSchema, body);
+    return this.groups.createInvite(id, email);
   }
 
   @Post('groups/join')
