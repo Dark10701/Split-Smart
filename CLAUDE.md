@@ -37,6 +37,18 @@ TypeScript everywhere. React Native (Expo) mobile, Next.js web, NestJS backend, 
 ## Definition of done
 
 A change is done when it: implements the ticket; includes tests; passes lint, typecheck, and CI; updates relevant docs (including `TASKS.md` checkboxes); and introduces no critical/high security findings.
+A ticket is complete only if:
+
+✓ Code builds successfully
+✓ No linting errors
+✓ All unit tests pass
+✓ Integration tests pass
+✓ Documentation updated
+✓ TASKS.md updated
+✓ No TODO comments
+✓ No placeholder code
+✓ Existing functionality unaffected
+✓ Code reviewed and refactored
 
 ## What to avoid
 

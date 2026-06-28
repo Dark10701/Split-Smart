@@ -1,0 +1,19 @@
+// SplitSmart baseline schema.
+// Domain models (users, groups, expenses, splits, payments, etc.) are added
+// in later milestones per TASKS.md. This baseline only establishes the
+// datasource/generator and a health-check table so migrations are wired up.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Trivial table to verify connectivity and migrations in M0.
+model HealthCheck {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+}
