@@ -33,6 +33,32 @@ export const updateMeSchema = z
   });
 export type UpdateMeInput = z.infer<typeof updateMeSchema>;
 
+/** POST /groups body. */
+export const createGroupSchema = z.object({
+  name: z.string().min(1).max(80),
+  defaultCurrency: currencyCodeSchema.optional(),
+});
+export type CreateGroupInput = z.infer<typeof createGroupSchema>;
+
+export const groupRoleSchema = z.enum(['admin', 'member']);
+export type GroupRole = z.infer<typeof groupRoleSchema>;
+
+/** Add a member: exactly one of an account email or a guest display name. */
+export const addMemberSchema = z
+  .object({
+    email: z.string().email().optional(),
+    guestName: z.string().min(1).max(80).optional(),
+    role: groupRoleSchema.default('member'),
+  })
+  .refine((v) => Boolean(v.email) !== Boolean(v.guestName), {
+    message: 'Provide exactly one of email or guestName',
+  });
+export type AddMemberInput = z.infer<typeof addMemberSchema>;
+
+/** Accept an invite. */
+export const joinGroupSchema = z.object({ token: z.string().min(1) });
+export type JoinGroupInput = z.infer<typeof joinGroupSchema>;
+
 /** Sample contract: create-expense payload. Expanded in later tickets. */
 export const createExpenseSchema = z.object({
   description: z.string().min(1).max(140),

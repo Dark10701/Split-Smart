@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { currencyCodeSchema, moneySchema, authClaimsSchema, updateMeSchema } from './index';
+import {
+  currencyCodeSchema,
+  moneySchema,
+  authClaimsSchema,
+  updateMeSchema,
+  createGroupSchema,
+  addMemberSchema,
+  joinGroupSchema,
+} from './index';
 
 describe('validation', () => {
   it('accepts valid currency codes', () => {
@@ -26,5 +34,22 @@ describe('validation', () => {
     expect(updateMeSchema.safeParse({ name: 'New' }).success).toBe(true);
     expect(updateMeSchema.safeParse({ defaultCurrency: 'eur' }).success).toBe(false);
     expect(updateMeSchema.safeParse({ defaultCurrency: 'EUR' }).success).toBe(true);
+  });
+
+  it('createGroup requires a name', () => {
+    expect(createGroupSchema.safeParse({ name: 'Trip' }).success).toBe(true);
+    expect(createGroupSchema.safeParse({ name: '' }).success).toBe(false);
+  });
+
+  it('addMember requires exactly one of email or guestName', () => {
+    expect(addMemberSchema.safeParse({ email: 'a@b.com' }).success).toBe(true);
+    expect(addMemberSchema.safeParse({ guestName: 'Bob' }).success).toBe(true);
+    expect(addMemberSchema.safeParse({}).success).toBe(false);
+    expect(addMemberSchema.safeParse({ email: 'a@b.com', guestName: 'Bob' }).success).toBe(false);
+  });
+
+  it('joinGroup needs a token', () => {
+    expect(joinGroupSchema.safeParse({ token: 'x' }).success).toBe(true);
+    expect(joinGroupSchema.safeParse({ token: '' }).success).toBe(false);
   });
 });

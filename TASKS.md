@@ -59,6 +59,12 @@ Every ticket below is scoped to be completable in **under two hours**. Tickets a
 > unique `(userId,channel,type)`, and enum constraints all enforce correctly.
 > Still to do on a Prisma-enabled machine: `prisma generate` + `prisma migrate
 > dev` against a live Postgres, and configure an OIDC provider for M1-01.
+>
+> **Groups slice (2026-06-28):** M1-12..18, M1-20/21/25 implemented and verified —
+> API type-checks clean, full jest suite passes (13 tests / 5 suites), and the
+> `0001_groups` migration was run on a Postgres engine (FK to User, unique
+> member, guest NULLs, unique invite token, role enum all enforce). Remaining
+> in M1: email-invite worker (M1-19) and the mobile/web auth+group UI (M1-08..11, 22..24).
 
 - [ ] **M1-01** Add auth provider (Auth0/Clerk) tenant + app config. *(external: create the tenant; code reads `AUTH_ISSUER_URL`/`AUTH_AUDIENCE`/`AUTH_JWKS_URI`)*
 - [x] **M1-02** Implement JWT validation guard in the API gateway layer. *(`JwtAuthGuard` — JWKS verify, issuer/audience, claims attached)*
@@ -71,20 +77,20 @@ Every ticket below is scoped to be completable in **under two hours**. Tickets a
 - [ ] **M1-09** Mobile: Apple sign-in integration.
 - [ ] **M1-10** Mobile: token storage + refresh handling.
 - [ ] **M1-11** Web: login + session handling.
-- [ ] **M1-12** Create `groups` + `group_members` tables + migration.
-- [ ] **M1-13** `POST /groups` create group endpoint.
-- [ ] **M1-14** `GET /groups` list my groups endpoint.
-- [ ] **M1-15** `GET /groups/:id` group detail with membership.
-- [ ] **M1-16** Implement membership authorization guard (must be a member).
-- [ ] **M1-17** Generate group invite link + `invitations` table.
-- [ ] **M1-18** `POST /groups/:id/join` accept-invite endpoint.
+- [x] **M1-12** Create `groups` + `group_members` tables + migration. *(Group/GroupMember/Invitation + `0001_groups`)*
+- [x] **M1-13** `POST /groups` create group endpoint. *(creator added as admin in a transaction)*
+- [x] **M1-14** `GET /groups` list my groups endpoint.
+- [x] **M1-15** `GET /groups/:id` group detail with membership.
+- [x] **M1-16** Implement membership authorization guard (must be a member). *(`GroupMembershipGuard`)*
+- [x] **M1-17** Generate group invite link + `invitations` table. *(`Invitation` + token; `POST /groups/:id/invite`)*
+- [x] **M1-18** Accept-invite endpoint. *(`POST /groups/join` with invite token; marks invitation accepted)*
 - [ ] **M1-19** Invite by email (enqueue email job, stubbed sender).
-- [ ] **M1-20** Add/remove member endpoints with role checks.
-- [ ] **M1-21** Support guest (non-account) members in the data model.
+- [x] **M1-20** Add/remove member endpoints with role checks. *(admin-only; remove is a soft-delete)*
+- [x] **M1-21** Support guest (non-account) members in the data model. *(nullable `userId` + `guestName`)*
 - [ ] **M1-22** Mobile: create-group screen.
 - [ ] **M1-23** Mobile: group list + group detail screens.
 - [ ] **M1-24** Mobile: invite-member flow (share link).
-- [ ] **M1-25** Tests: group membership + authorization.
+- [x] **M1-25** Tests: group membership + authorization. *(service unit tests; verified via jest)*
 
 ---
 

@@ -1,5 +1,5 @@
 // SplitSmart schema. Money is stored as integer minor units + explicit currency
-// in later milestones; this milestone (M1) adds users and notification prefs.
+// in later milestones. M1 adds users, notification prefs, groups, and membership.
 
 generator client {
   provider = "prisma-client-js"
@@ -27,6 +27,8 @@ model User {
   updatedAt       DateTime @updatedAt
 
   notificationPrefs NotificationPref[]
+  groupsCreated     Group[]            @relation("GroupsCreated")
+  groupMemberships  GroupMember[]
 }
 
 enum NotificationChannel {
@@ -53,4 +55,55 @@ model NotificationPref {
   enabled Boolean             @default(true)
 
   @@unique([userId, channel, type])
+}
+
+enum GroupRole {
+  admin
+  member
+}
+
+/// A group of people sharing expenses.
+model Group {
+  id              String   @id @default(uuid())
+  name            String
+  defaultCurrency String   @default("USD")
+  createdById     String
+  createdBy       User     @relation("GroupsCreated", fields: [createdById], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  members     GroupMember[]
+  invitations Invitation[]
+
+  @@index([createdById])
+}
+
+/// Membership of a user (or a guest) in a group. Soft-removed to keep history.
+model GroupMember {
+  id        String    @id @default(uuid())
+  groupId   String
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId    String? // null for guest members
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guestName String? // display name when userId is null
+  role      GroupRole @default(member)
+  joinedAt  DateTime  @default(now())
+  removedAt DateTime?
+
+  @@unique([groupId, userId])
+  @@index([userId])
+}
+
+/// A pending invitation to join a group via a shareable token.
+model Invitation {
+  id         String    @id @default(uuid())
+  groupId    String
+  group      Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  token      String    @unique
+  email      String? // optional targeted invite
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime?
+  acceptedAt DateTime?
+
+  @@index([groupId])
 }
