@@ -32,6 +32,7 @@ model User {
   groupMemberships  GroupMember[]
   expensesCreated   Expense[]          @relation("ExpensesCreated")
   activityEntries   ActivityLog[]
+  comments          Comment[]
 }
 
 enum NotificationChannel {
@@ -78,6 +79,7 @@ model Group {
   members     GroupMember[]
   invitations Invitation[]
   expenses    Expense[]
+  payments    Payment[]
   activityLog ActivityLog[]
 
   @@index([createdById])
@@ -95,8 +97,10 @@ model GroupMember {
   joinedAt  DateTime  @default(now())
   removedAt DateTime?
 
-  expensesPaid Expense[]      @relation("ExpensePayer")
-  splits       ExpenseSplit[]
+  expensesPaid  Expense[]      @relation("ExpensePayer")
+  splits        ExpenseSplit[]
+  paymentsFrom  Payment[]      @relation("PaymentFrom")
+  paymentsTo    Payment[]      @relation("PaymentTo")
 
   @@unique([groupId, userId])
   @@index([userId])
@@ -131,7 +135,8 @@ model Expense {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
-  splits ExpenseSplit[]
+  splits   ExpenseSplit[]
+  comments Comment[]
 
   @@index([groupId, occurredAt])
   @@index([payerMemberId])
@@ -172,6 +177,55 @@ model ActivityLog {
 
   @@index([groupId, createdAt])
   @@index([entityType, entityId])
+}
+
+enum PaymentMethod {
+  cash
+  offline
+  stripe
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+}
+
+/// A settlement between two members. Manual (cash/offline) settlements are
+/// `completed` immediately; in-app (stripe) payments move through `pending`
+/// in M4. `idempotencyKey` prevents double-processing — money is sacred.
+model Payment {
+  id             String        @id @default(uuid())
+  groupId        String
+  group          Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  fromMemberId   String
+  fromMember     GroupMember   @relation("PaymentFrom", fields: [fromMemberId], references: [id])
+  toMemberId     String
+  toMember       GroupMember   @relation("PaymentTo", fields: [toMemberId], references: [id])
+  amountMinor    Int
+  currency       String
+  method         PaymentMethod
+  status         PaymentStatus @default(completed)
+  providerRef    String? // Stripe payment-intent id in M4
+  idempotencyKey String        @unique
+  createdById    String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([groupId, createdAt])
+}
+
+/// A comment thread entry on an expense.
+model Comment {
+  id        String   @id @default(uuid())
+  expenseId String
+  expense   Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([expenseId, createdAt])
 }
 
 /// A pending invitation to join a group via a shareable token.

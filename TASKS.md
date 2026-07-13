@@ -157,22 +157,59 @@ Every ticket below is scoped to be completable in **under two hours**. Tickets a
 
 ## M3 — MVP Settlement & Release
 
-- [ ] **M3-01** Create `payments` table (with idempotency_key, status) + migration.
-- [ ] **M3-02** `POST /groups/:id/settlements` record manual settlement.
-- [ ] **M3-03** Support partial settlement amounts + balance recompute.
-- [ ] **M3-04** Reflect settlements in the activity log.
-- [ ] **M3-05** Mobile: settle-up screen (who to pay, amount).
-- [ ] **M3-06** Mobile: record-cash-payment flow.
-- [ ] **M3-07** Create `comments` table + endpoints (add/list per expense).
-- [ ] **M3-08** Mobile: activity feed screen.
-- [ ] **M3-09** Mobile: per-expense comments UI.
-- [ ] **M3-10** Notification dispatch service (resolve prefs → enqueue).
-- [ ] **M3-11** Notification worker skeleton (consume queue).
-- [ ] **M3-12** Push notification: new expense (FCM/APNs).
-- [ ] **M3-13** Email notification: settle-up request (SendGrid template).
-- [ ] **M3-14** Mobile: in-app notification list + badge.
-- [ ] **M3-15** Beta build distribution (TestFlight / internal track).
-- [ ] **M3-16** Smoke-test checklist for the end-to-end MVP flow.
+> **Status (2026-07-14):** Backend + mobile settlement/feed/notifications slice
+> implemented and verified without a live DB. Whole-workspace typecheck (10/10)
+> and lint (10/10) pass; `pnpm -r build` passes; tests total **85** — API jest
+> 62 (adds settlement idempotency + notification-dispatch suites), validation
+> vitest 19, notifications worker vitest 4. `prisma validate` passes; client
+> regenerated. `0003_settlement` migration written (Payment + Comment; CHECK
+> positive amount, ISO currency, distinct members; unique `idempotencyKey`).
+>
+> **Idempotency (money is sacred):** manual settlements are keyed on
+> `idempotencyKey` (unique index) — a repeated key returns the original payment,
+> and a lost unique-constraint race (P2002) resolves to the winner. Balances now
+> fold in completed payments via the pure engine (`LedgerPayment`).
+>
+> **Partial-external items:** M3-12/13 (push/email *delivery*) — the dispatch
+> path (prefs → per-channel jobs) and worker channel routing are complete and
+> tested; the actual FCM/APNs/SendGrid calls are env-gated and light up when
+> credentials are provisioned. M3-14 — the Activity feed serves as the in-app
+> notification surface for the MVP (architecture routes in-app to the feed +
+> WebSocket); a dedicated badge/unread-count is deferred. M3-15 (TestFlight/EAS)
+> is external. Live-DB migration run still pending (no Docker here).
+
+- [x] **M3-01** Create `payments` table (with idempotency_key, status) + migration. *(`Payment` + `0003_settlement`; unique `idempotencyKey`)*
+- [x] **M3-02** `POST /groups/:id/settlements` record manual settlement. *(`SettlementController` + idempotent service)*
+- [x] **M3-03** Support partial settlement amounts + balance recompute. *(amount < outstanding; engine recomputes from completed payments)*
+- [x] **M3-04** Reflect settlements in the activity log. *(`entityType: 'payment'` written in-transaction)*
+- [x] **M3-05** Mobile: settle-up screen (who to pay, amount). *(`SettleUpScreen`, pre-fills from a settlement-plan row)*
+- [x] **M3-06** Mobile: record-cash-payment flow. *(method cash/offline; fresh idempotency key per attempt)*
+- [x] **M3-07** Create `comments` table + endpoints (add/list per expense). *(`Comment` + `FeedController` comments routes)*
+- [x] **M3-08** Mobile: activity feed screen. *(GroupDetail Activity tab → `GET /groups/:id/activity`)*
+- [x] **M3-09** Mobile: per-expense comments UI. *(`CommentsScreen`, tap an expense)*
+- [x] **M3-10** Notification dispatch service (resolve prefs → enqueue). *(`NotificationsService` → per-channel jobs, actor excluded)*
+- [x] **M3-11** Notification worker skeleton (consume queue). *(`notify_*` routing to per-channel handlers; 4 tests)*
+- [~] **M3-12** Push notification: new expense (FCM/APNs). *(dispatch + worker channel done and tested; FCM/APNs send env-gated on `FCM_SERVER_KEY`)*
+- [~] **M3-13** Email notification: settle-up request (SendGrid template). *(dispatch + worker channel done; SendGrid call env-gated on `SENDGRID_API_KEY`)*
+- [~] **M3-14** Mobile: in-app notification list + badge. *(Activity feed is the in-app surface; dedicated unread badge deferred)*
+- [ ] **M3-15** Beta build distribution (TestFlight / internal track). *(external: needs an Apple/Google account + EAS)*
+- [x] **M3-16** Smoke-test checklist for the end-to-end MVP flow. *(see below)*
+
+### M3-16 — MVP smoke-test checklist
+
+Run against a live API + Postgres + Redis (`docker compose up -d`, `prisma migrate dev`, `pnpm dev`).
+
+1. **Auth:** sign in on mobile (dev token) → `GET /me` returns the profile.
+2. **Group:** create a group; a second user joins via the shared invite link; both see shared membership.
+3. **Expense (equal):** add "Dinner" 30.00 split equally across 3 members → each split reconciles; expense appears in the list in real time on the other client.
+4. **Expense (uneven):** add a percentage/shares/exact split → splits sum exactly to the total (no lost cents).
+5. **Balances:** open Balances → the settlement plan shows the minimum transfers; nets sum to zero.
+6. **Settle (partial):** record a cash payment for *less* than the outstanding amount → balances shrink correctly; retrying the same request (same idempotency key) does **not** double-record.
+7. **Settle (full):** settle the remainder → Balances shows "All settled up".
+8. **Comments:** open an expense, post a comment → appears for both members.
+9. **Activity feed:** every expense create/edit/delete and each settlement is listed, newest first, attributed to the actor.
+10. **Notifications:** with the notifications worker running, adding an expense enqueues per-channel jobs for the other members (worker logs the sends; unconfigured providers report `delivered:false` without failing the job).
+11. **Delete:** soft-delete an expense → it leaves the list, balances recompute, and the deletion is recorded in the activity feed (history preserved).
 
 ---
 

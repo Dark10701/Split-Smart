@@ -15,6 +15,7 @@ import { PrismaService } from '../database/prisma.service';
 import { computeShares, SplitError } from './split-strategies';
 import { BalancesService } from '../balances/balances.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 
 /** An expense with its splits and payer, as returned to clients. */
 export type ExpenseWithSplits = Prisma.ExpenseGetPayload<{ include: { splits: true } }>;
@@ -25,7 +26,33 @@ export class ExpensesService {
     private readonly prisma: PrismaService,
     private readonly balances: BalancesService,
     private readonly realtime: RealtimeGateway,
+    private readonly notifications: NotificationsService,
   ) {}
+
+  /** Notify every participant's user (except the actor) that an expense was added. */
+  private async notifyExpenseAdded(
+    groupId: string,
+    actorUserId: string,
+    expense: ExpenseWithSplits,
+  ): Promise<void> {
+    const memberIds = [...new Set([expense.payerMemberId, ...expense.splits.map((s) => s.memberId)])];
+    const members = await this.prisma.groupMember.findMany({
+      where: { id: { in: memberIds }, userId: { not: null } },
+      select: { userId: true },
+    });
+    const recipientUserIds = members
+      .map((m) => m.userId)
+      .filter((id): id is string => id !== null);
+    await this.notifications.notify({
+      groupId,
+      type: 'expense_added',
+      actorUserId,
+      recipientUserIds,
+      title: 'New expense',
+      body: `${expense.description} — ${expense.amountMinor} ${expense.currency}`,
+      data: { expenseId: expense.id },
+    });
+  }
 
   /** Invalidate the balance cache and notify subscribers of the group. */
   private async publishMutation(
@@ -107,6 +134,7 @@ export class ExpensesService {
     });
 
     await this.publishMutation(groupId, { type: 'expense.created', expenseId: expense.id });
+    await this.notifyExpenseAdded(groupId, actorUserId, expense);
     return expense;
   }
 

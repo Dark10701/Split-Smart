@@ -47,6 +47,30 @@ export type NetBalances = Record<string, Record<string, number>>;
 export interface Transfer { fromMemberId: string; toMemberId: string; amountMinor: number; currency: string }
 export interface GroupBalances { nets: NetBalances; settlements: Transfer[] }
 
+export interface Payment {
+  id: string;
+  fromMemberId: string;
+  toMemberId: string;
+  amountMinor: number;
+  currency: string;
+  method: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface ActivityEntry {
+  id: string;
+  actorId: string;
+  entityType: string;
+  entityId: string;
+  action: 'created' | 'updated' | 'deleted';
+  payload: Record<string, unknown>;
+  createdAt: string;
+}
+export interface ActivityPage { items: ActivityEntry[]; nextCursor: string | null }
+
+export interface Comment { id: string; authorId: string; body: string; createdAt: string }
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -109,4 +133,35 @@ export const api = {
     fetch(`${API_URL}/groups/${groupId}/balances`, { headers: headers(token) }).then(
       unwrap<GroupBalances>,
     ),
+  recordSettlement: (
+    token: string,
+    groupId: string,
+    body: {
+      fromMemberId: string;
+      toMemberId: string;
+      amountMinor: number;
+      currency: string;
+      method?: 'cash' | 'offline';
+      idempotencyKey: string;
+    },
+  ) =>
+    fetch(`${API_URL}/groups/${groupId}/settlements`, {
+      method: 'POST',
+      headers: headers(token),
+      body: JSON.stringify(body),
+    }).then(unwrap<Payment>),
+  listActivity: (token: string, groupId: string) =>
+    fetch(`${API_URL}/groups/${groupId}/activity`, { headers: headers(token) }).then(
+      unwrap<ActivityPage>,
+    ),
+  listComments: (token: string, groupId: string, expenseId: string) =>
+    fetch(`${API_URL}/groups/${groupId}/expenses/${expenseId}/comments`, {
+      headers: headers(token),
+    }).then(unwrap<Comment[]>),
+  addComment: (token: string, groupId: string, expenseId: string, body: string) =>
+    fetch(`${API_URL}/groups/${groupId}/expenses/${expenseId}/comments`, {
+      method: 'POST',
+      headers: headers(token),
+      body: JSON.stringify({ body }),
+    }).then(unwrap<Comment>),
 };

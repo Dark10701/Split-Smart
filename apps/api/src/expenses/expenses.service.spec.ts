@@ -12,8 +12,15 @@ function makeService(prismaOverrides: Record<string, unknown>) {
   const balances = { invalidate } as unknown as BalancesService;
   const emitToGroup = jest.fn();
   const realtime = { emitToGroup } as unknown as import('../realtime/realtime.gateway').RealtimeGateway;
-  const svc = new ExpensesService(prismaOverrides as unknown as PrismaService, balances, realtime);
-  return { svc, invalidate, emitToGroup };
+  const notify = jest.fn().mockResolvedValue(undefined);
+  const notifications = { notify } as unknown as import('../notifications/notifications.service').NotificationsService;
+  const svc = new ExpensesService(
+    prismaOverrides as unknown as PrismaService,
+    balances,
+    realtime,
+    notifications,
+  );
+  return { svc, invalidate, emitToGroup, notify };
 }
 
 /** A groupMember.findMany that reports the given ids as valid active members. */

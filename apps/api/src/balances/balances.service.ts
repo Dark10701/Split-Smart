@@ -6,6 +6,7 @@ import {
   computeNetBalances,
   settlementPlan,
   type LedgerExpense,
+  type LedgerPayment,
   type NetBalances,
   type Transfer,
 } from './engine';
@@ -41,18 +42,26 @@ export class BalancesService {
 
   /** Recompute from the durable ledger. Pure engine does the arithmetic. */
   private async compute(groupId: string): Promise<GroupBalances> {
-    const expenses = await this.prisma.expense.findMany({
-      where: { groupId, deletedAt: null },
-      include: { splits: true },
-    });
+    const [expenses, payments] = await Promise.all([
+      this.prisma.expense.findMany({
+        where: { groupId, deletedAt: null },
+        include: { splits: true },
+      }),
+      this.prisma.payment.findMany({ where: { groupId, status: 'completed' } }),
+    ]);
     const ledger: LedgerExpense[] = expenses.map((e) => ({
       payerMemberId: e.payerMemberId,
       amountMinor: e.amountMinor,
       currency: e.currency,
       splits: e.splits.map((s) => ({ memberId: s.memberId, shareMinor: s.shareMinor })),
     }));
-    // Payments join the ledger in M3; balances already account for them via the engine.
-    const nets = computeNetBalances(ledger);
+    const settlements: LedgerPayment[] = payments.map((p) => ({
+      fromMemberId: p.fromMemberId,
+      toMemberId: p.toMemberId,
+      amountMinor: p.amountMinor,
+      currency: p.currency,
+    }));
+    const nets = computeNetBalances(ledger, settlements);
     return { nets, settlements: settlementPlan(nets) };
   }
 

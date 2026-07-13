@@ -149,3 +149,42 @@ export const listExpensesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 export type ListExpensesQuery = z.infer<typeof listExpensesQuerySchema>;
+
+// ---------------------------------------------------------------------------
+// Settlements & comments (M3)
+// ---------------------------------------------------------------------------
+
+export const paymentMethodSchema = z.enum(['cash', 'offline']);
+export type PaymentMethodInput = z.infer<typeof paymentMethodSchema>;
+
+/**
+ * POST /groups/:id/settlements — record a manual (cash/offline) settlement.
+ * Partial settlements are just an amount smaller than the outstanding balance.
+ * `idempotencyKey` makes the write safe to retry (money is sacred).
+ */
+export const createSettlementSchema = z
+  .object({
+    fromMemberId: memberId,
+    toMemberId: memberId,
+    amountMinor: z.number().int().positive(),
+    currency: currencyCodeSchema,
+    method: paymentMethodSchema.default('cash'),
+    idempotencyKey: z.string().min(8).max(200),
+  })
+  .refine((v) => v.fromMemberId !== v.toMemberId, {
+    message: 'A member cannot settle with themselves',
+  });
+export type CreateSettlementInput = z.infer<typeof createSettlementSchema>;
+
+/** POST /expenses/:id/comments body. */
+export const createCommentSchema = z.object({
+  body: z.string().min(1).max(1000),
+});
+export type CreateCommentInput = z.infer<typeof createCommentSchema>;
+
+/** GET /groups/:id/activity cursor pagination query. */
+export const listActivityQuerySchema = z.object({
+  cursor: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(30),
+});
+export type ListActivityQuery = z.infer<typeof listActivityQuerySchema>;
