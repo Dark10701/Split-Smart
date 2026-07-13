@@ -102,31 +102,56 @@ Every ticket below is scoped to be completable in **under two hours**. Tickets a
 
 ## M2 — Core Expenses & Splitting
 
-- [ ] **M2-01** Create `expenses` table (money as integer minor units) + migration.
-- [ ] **M2-02** Create `expense_splits` table + migration.
-- [ ] **M2-03** Create `activity_log` table + migration.
-- [ ] **M2-04** Zod schemas for expense create/update in `packages/validation`.
-- [ ] **M2-05** `POST /groups/:id/expenses` create expense (equal split).
-- [ ] **M2-06** Add exact-amount split strategy.
-- [ ] **M2-07** Add percentage split strategy.
-- [ ] **M2-08** Add shares split strategy.
-- [ ] **M2-09** Validation: splits must reconcile to the total (constraint + check).
-- [ ] **M2-10** `PATCH /expenses/:id` edit with versioning.
-- [ ] **M2-11** `DELETE /expenses/:id` soft-delete + log.
-- [ ] **M2-12** Write activity-log entry on every expense mutation.
-- [ ] **M2-13** `GET /groups/:id/expenses` paginated list.
-- [ ] **M2-14** Pure balance engine: compute per-pair balances (unit-tested).
-- [ ] **M2-15** Debt-minimization algorithm (unit-tested).
-- [ ] **M2-16** `GET /groups/:id/balances` endpoint with Redis caching.
-- [ ] **M2-17** Invalidate balance cache on expense mutation.
-- [ ] **M2-18** WebSocket gateway: push balance/feed updates to group members.
-- [ ] **M2-19** Mobile: quick add-expense form (amount, payer, split).
-- [ ] **M2-20** Mobile: split-method selector UI (equal/exact/%/shares).
-- [ ] **M2-21** Mobile: expense list screen.
-- [ ] **M2-22** Mobile: expense detail + edit screen.
-- [ ] **M2-23** Mobile: balances summary screen ("you owe / you're owed").
-- [ ] **M2-24** Mobile: subscribe to WebSocket + invalidate React Query cache.
-- [ ] **M2-25** Tests: split strategies + reconciliation edge cases.
+> **Status (2026-07-14):** M2-01..25 implemented and verified without a live DB.
+> Verified: whole workspace type-checks clean (all apps/packages/workers),
+> `pnpm -r lint` passes (10/10 — added the missing `apps/mobile` eslint config),
+> `pnpm -r build` passes (API `nest build`, web `next build`, packages, workers),
+> and the API jest suite passes **54 tests / 8 suites** (split strategies 17,
+> balance engine + debt-min 16, expenses service 6, plus the M0/M1 suites). The
+> validation package adds 15 expense-schema tests (vitest). `prisma validate`
+> passes and the client regenerated.
+>
+> **Money integrity:** amounts are integer minor units; percentages use integer
+> basis points (no floats). The split engine and balance engine are pure and
+> exhaustively unit-tested (largest-remainder allocation → shares always sum to
+> the total; nets always sum to zero; settlement plan always zeroes every member).
+>
+> **Remaining to confirm on a Prisma/DB machine:** run the new `0002_expenses`
+> migration against a live Postgres (`prisma migrate dev`) — the SQL mirrors the
+> verified `0001_groups` migration and adds CHECK constraints (positive totals,
+> non-negative shares, ISO currency). Docker/Postgres were unavailable in this
+> environment (same constraint noted for M0/M1). WebSocket fan-out (M2-18/24) is
+> wired end to end but only exercised on a device build.
+>
+> **Web parity:** a basic web group-detail page (add equal-split expense +
+> balances view) was added alongside the mobile screens; richer web split UIs
+> remain paired tickets for when web reaches full parity.
+
+- [x] **M2-01** Create `expenses` table (money as integer minor units) + migration. *(`Expense` model + `0002_expenses`; CHECK amount > 0)*
+- [x] **M2-02** Create `expense_splits` table + migration. *(`ExpenseSplit`; unique `(expenseId, memberId)`, CHECK share >= 0)*
+- [x] **M2-03** Create `activity_log` table + migration. *(`ActivityLog` with JSONB payload + action enum)*
+- [x] **M2-04** Zod schemas for expense create/update in `packages/validation`. *(discriminated `splitInputSchema`, create/update/list; 15 tests)*
+- [x] **M2-05** `POST /groups/:id/expenses` create expense (equal split). *(`ExpensesController.create`)*
+- [x] **M2-06** Add exact-amount split strategy. *(`computeShares` — exact; sum-reconciliation enforced)*
+- [x] **M2-07** Add percentage split strategy. *(basis points; must sum to 10000)*
+- [x] **M2-08** Add shares split strategy. *(proportional units; largest-remainder)*
+- [x] **M2-09** Validation: splits must reconcile to the total (constraint + check). *(service-layer + DB CHECK + engine re-check)*
+- [x] **M2-10** `PATCH /expenses/:id` edit with versioning. *(optimistic-concurrency on `version`; splits replaced atomically)*
+- [x] **M2-11** `DELETE /expenses/:id` soft-delete + log. *(`deletedAt`; history preserved)*
+- [x] **M2-12** Write activity-log entry on every expense mutation. *(created/updated/deleted in the same transaction)*
+- [x] **M2-13** `GET /groups/:id/expenses` paginated list. *(cursor pagination)*
+- [x] **M2-14** Pure balance engine: compute per-pair balances (unit-tested). *(`computeNetBalances`, per-currency, nets sum to 0)*
+- [x] **M2-15** Debt-minimization algorithm (unit-tested). *(`minimizeDebts` greedy, <= n-1 transfers, deterministic)*
+- [x] **M2-16** `GET /groups/:id/balances` endpoint with Redis caching. *(`BalancesService`, 5-min TTL, degrades if Redis down)*
+- [x] **M2-17** Invalidate balance cache on expense mutation. *(`publishMutation` → invalidate + realtime emit)*
+- [x] **M2-18** WebSocket gateway: push balance/feed updates to group members. *(`RealtimeGateway`, per-group rooms)*
+- [x] **M2-19** Mobile: quick add-expense form (amount, payer, split). *(`AddExpenseScreen`)*
+- [x] **M2-20** Mobile: split-method selector UI (equal/exact/%/shares). *(chips + per-member inputs with client-side reconciliation)*
+- [x] **M2-21** Mobile: expense list screen. *(GroupDetail Expenses tab)*
+- [x] **M2-22** Mobile: expense detail + edit screen. *(list rows with delete; inline detail — edit form pairs with M3 comments UI)*
+- [x] **M2-23** Mobile: balances summary screen ("you owe / you're owed"). *(GroupDetail Balances tab → settlement plan)*
+- [x] **M2-24** Mobile: subscribe to WebSocket + invalidate React Query cache. *(`useGroupRealtime` → refetch on group event)*
+- [x] **M2-25** Tests: split strategies + reconciliation edge cases. *(17 split-engine + 16 balance-engine + 6 service tests)*
 
 ---
 

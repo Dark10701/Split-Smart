@@ -58,7 +58,8 @@ export default function GroupsPage() {
       <ul>
         {groups.map((g) => (
           <li key={g.id}>
-            {g.name} <span style={{ color: '#6B7280' }}>({g.defaultCurrency})</span>
+            <a href={`/groups/${g.id}`}>{g.name}</a>{' '}
+            <span style={{ color: '#6B7280' }}>({g.defaultCurrency})</span>
           </li>
         ))}
         {groups.length === 0 && <p style={{ color: '#6B7280' }}>No groups yet.</p>}

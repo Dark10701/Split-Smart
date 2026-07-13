@@ -1,5 +1,6 @@
 // SplitSmart schema. Money is stored as integer minor units + explicit currency
-// in later milestones. M1 adds users, notification prefs, groups, and membership.
+// — never floats. M1 adds users, notification prefs, groups, and membership.
+// M2 adds expenses, splits, and the activity log.
 
 generator client {
   provider = "prisma-client-js"
@@ -29,6 +30,8 @@ model User {
   notificationPrefs NotificationPref[]
   groupsCreated     Group[]            @relation("GroupsCreated")
   groupMemberships  GroupMember[]
+  expensesCreated   Expense[]          @relation("ExpensesCreated")
+  activityEntries   ActivityLog[]
 }
 
 enum NotificationChannel {
@@ -74,6 +77,8 @@ model Group {
 
   members     GroupMember[]
   invitations Invitation[]
+  expenses    Expense[]
+  activityLog ActivityLog[]
 
   @@index([createdById])
 }
@@ -90,8 +95,83 @@ model GroupMember {
   joinedAt  DateTime  @default(now())
   removedAt DateTime?
 
+  expensesPaid Expense[]      @relation("ExpensePayer")
+  splits       ExpenseSplit[]
+
   @@unique([groupId, userId])
   @@index([userId])
+}
+
+enum SplitType {
+  equal
+  exact
+  percentage
+  shares
+  itemized
+}
+
+/// A shared expense. Money is integer minor units + ISO-4217 currency.
+/// Edits bump `version`; deletes are soft (`deletedAt`) — never silent loss.
+model Expense {
+  id            String      @id @default(uuid())
+  groupId       String
+  group         Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payerMemberId String
+  payer         GroupMember @relation("ExpensePayer", fields: [payerMemberId], references: [id])
+  amountMinor   Int
+  currency      String
+  category      String?
+  description   String
+  occurredAt    DateTime
+  splitType     SplitType
+  createdById   String
+  createdBy     User        @relation("ExpensesCreated", fields: [createdById], references: [id])
+  version       Int         @default(1)
+  deletedAt     DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  splits ExpenseSplit[]
+
+  @@index([groupId, occurredAt])
+  @@index([payerMemberId])
+}
+
+/// One participant's share of an expense. Shares always sum to the expense
+/// total (enforced in the service layer and re-checked by the balance engine).
+model ExpenseSplit {
+  id         String      @id @default(uuid())
+  expenseId  String
+  expense    Expense     @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  memberId   String
+  member     GroupMember @relation(fields: [memberId], references: [id])
+  shareMinor Int
+
+  @@unique([expenseId, memberId])
+  @@index([memberId])
+}
+
+enum ActivityAction {
+  created
+  updated
+  deleted
+}
+
+/// Append-only audit trail of every financial mutation in a group.
+model ActivityLog {
+  id         String         @id @default(uuid())
+  groupId    String
+  group      Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  actorId    String
+  actor      User           @relation(fields: [actorId], references: [id])
+  entityType String // 'expense' | 'payment' | 'member' | ...
+  entityId   String
+  action     ActivityAction
+  payload    Json
+  createdAt  DateTime       @default(now())
+
+  @@index([groupId, createdAt])
+  @@index([entityType, entityId])
 }
 
 /// A pending invitation to join a group via a shareable token.
