@@ -215,18 +215,44 @@ Run against a live API + Postgres + Redis (`docker compose up -d`, `prisma migra
 
 ## M4 — In-App Payments
 
-- [ ] **M4-01** Stripe account + API keys in secrets management.
-- [ ] **M4-02** Payment worker skeleton (consume payment jobs).
-- [ ] **M4-03** Create payment intent endpoint (idempotent).
-- [ ] **M4-04** Mobile: Stripe SDK integration + payment sheet.
-- [ ] **M4-05** Handle Stripe webhooks (payment succeeded/failed).
-- [ ] **M4-06** Update payment status + balances on webhook.
-- [ ] **M4-07** Idempotency handling to prevent double-charge (test).
-- [ ] **M4-08** Payment failure UX + retry path.
-- [ ] **M4-09** Mobile: payment confirmation screen + receipt.
-- [ ] **M4-10** Notification: payment confirmation (push + email).
-- [ ] **M4-11** Reconciliation job: detect stuck/mismatched payments.
-- [ ] **M4-12** Tests: payment lifecycle + webhook handling.
+> **Status (2026-07-14):** Provider-agnostic payment orchestration implemented
+> and verified. The Stripe integration is behind a `PAYMENT_PROVIDER` seam
+> (mirrors the `INVITE_NOTIFIER` pattern); the default `StubPaymentProvider` is
+> a real deterministic in-memory provider (idempotent intents, signed test
+> webhooks, status tracking) so the whole lifecycle is unit-testable now and
+> the Stripe SDK adapter drops into a single binding once keys exist (M4-01).
+> No migration needed — the M3 `Payment` model already carries
+> `status`/`providerRef`/`method='stripe'`/`idempotencyKey`.
+>
+> Verified: whole-workspace typecheck (10/10), lint (10/10), build; tests total
+> **97** — API jest **73** (adds 11 payment-lifecycle tests), validation vitest
+> 20, notifications worker 4.
+>
+> **Double-charge safety (money is sacred):** intent creation is idempotent on
+> `idempotencyKey` (repeat returns the existing intent, no second provider
+> call; P2002 race resolves to the winner). Webhook transitions use a
+> `updateMany … where status='pending'` guard so a payment completes exactly
+> once even under duplicate/concurrent webhooks; reconciliation re-checks stale
+> pending intents against the provider to catch missed webhooks.
+>
+> **External / needs credentials:** M4-01 (Stripe account + keys), M4-04/09
+> (mobile `@stripe/stripe-react-native` payment sheet + confirmation screen —
+> the intent/clientSecret contract is ready for them), and the client half of
+> M4-08. The real Stripe adapter (`createIntent`/`parseWebhook` via the Stripe
+> SDK + webhook secret) slots into the provider seam.
+
+- [ ] **M4-01** Stripe account + API keys in secrets management. *(external: provision keys; code reads them when present)*
+- [x] **M4-02** Payment worker skeleton (consume payment jobs). *(routes `reconcile_stale` sweeps)*
+- [x] **M4-03** Create payment intent endpoint (idempotent). *(`POST /groups/:id/payments/intent`; idempotent on key)*
+- [ ] **M4-04** Mobile: Stripe SDK integration + payment sheet. *(external: needs the Stripe RN SDK + publishable key; server contract ready)*
+- [x] **M4-05** Handle Stripe webhooks (payment succeeded/failed). *(`POST /payments/webhook`; raw-body signature verify seam)*
+- [x] **M4-06** Update payment status + balances on webhook. *(exactly-once transition + balance recompute + realtime)*
+- [x] **M4-07** Idempotency handling to prevent double-charge (test). *(idempotency + concurrent-webhook guard, covered by tests)*
+- [~] **M4-08** Payment failure UX + retry path. *(server marks failed + allows a fresh intent with a new key; mobile UX pairs with M4-04)*
+- [ ] **M4-09** Mobile: payment confirmation screen + receipt. *(external: pairs with the Stripe SDK payment sheet)*
+- [x] **M4-10** Notification: payment confirmation (push + email). *(payee notified on completion via the M3 dispatch path)*
+- [x] **M4-11** Reconciliation job: detect stuck/mismatched payments. *(`reconcileStale` polls the provider for stale pending intents)*
+- [x] **M4-12** Tests: payment lifecycle + webhook handling. *(11 tests: intent idempotency, webhook state machine, reconciliation)*
 
 ---
 

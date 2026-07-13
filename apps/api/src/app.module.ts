@@ -11,6 +11,7 @@ import { ExpensesModule } from './expenses/expenses.module';
 import { BalancesModule } from './balances/balances.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SettlementModule } from './settlement/settlement.module';
+import { PaymentsModule } from './payments/payments.module';
 import { FeedModule } from './feed/feed.module';
 import { NotificationsModule } from './notifications/notifications.module';
 
@@ -30,6 +31,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     ExpensesModule,
     BalancesModule,
     SettlementModule,
+    PaymentsModule,
     FeedModule,
     HealthModule,
   ],

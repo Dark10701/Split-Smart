@@ -13,6 +13,7 @@ import {
   listExpensesQuerySchema,
   createSettlementSchema,
   createCommentSchema,
+  createPaymentIntentSchema,
 } from './index';
 
 const uid = (n: number): string => `00000000-0000-4000-8000-00000000000${n}`;
@@ -170,5 +171,18 @@ describe('settlement & comment validation (M3)', () => {
     expect(createCommentSchema.safeParse({ body: 'Looks right' }).success).toBe(true);
     expect(createCommentSchema.safeParse({ body: '' }).success).toBe(false);
     expect(createCommentSchema.safeParse({ body: 'x'.repeat(1001) }).success).toBe(false);
+  });
+
+  it('validates a payment intent and rejects self-payment', () => {
+    const good = {
+      fromMemberId: uid(1),
+      toMemberId: uid(2),
+      amountMinor: 500,
+      currency: 'USD',
+      idempotencyKey: 'pay-key-12345678',
+    };
+    expect(createPaymentIntentSchema.safeParse(good).success).toBe(true);
+    expect(createPaymentIntentSchema.safeParse({ ...good, toMemberId: uid(1) }).success).toBe(false);
+    expect(createPaymentIntentSchema.safeParse({ ...good, amountMinor: -1 }).success).toBe(false);
   });
 });

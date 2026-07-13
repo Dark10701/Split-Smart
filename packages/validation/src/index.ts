@@ -188,3 +188,21 @@ export const listActivityQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(30),
 });
 export type ListActivityQuery = z.infer<typeof listActivityQuerySchema>;
+
+// ---------------------------------------------------------------------------
+// In-app payments (M4)
+// ---------------------------------------------------------------------------
+
+/** POST /groups/:id/payments/intent — create a Stripe payment intent. */
+export const createPaymentIntentSchema = z
+  .object({
+    fromMemberId: memberId,
+    toMemberId: memberId,
+    amountMinor: z.number().int().positive(),
+    currency: currencyCodeSchema,
+    idempotencyKey: z.string().min(8).max(200),
+  })
+  .refine((v) => v.fromMemberId !== v.toMemberId, {
+    message: 'A member cannot pay themselves',
+  });
+export type CreatePaymentIntentInput = z.infer<typeof createPaymentIntentSchema>;
