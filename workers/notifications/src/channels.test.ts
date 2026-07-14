@@ -2,7 +2,14 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { deliver, type NotificationJob } from './channels';
 
 function job(channel: NotificationJob['channel']): NotificationJob {
-  return { channel, type: 'expense_added', userId: 'u1', groupId: 'g1', title: 'New expense', body: 'Dinner' };
+  return {
+    channel,
+    type: 'expense_added',
+    userId: 'u1',
+    groupId: 'g1',
+    title: 'New expense',
+    body: 'Dinner',
+  };
 }
 
 describe('notification channel routing', () => {
@@ -36,7 +43,10 @@ describe('notification channel routing', () => {
   });
 
   it('handles an unknown channel gracefully', async () => {
-    const result = await deliver({ ...job('push'), channel: 'carrier-pigeon' as NotificationJob['channel'] });
+    const result = await deliver({
+      ...job('push'),
+      channel: 'carrier-pigeon' as NotificationJob['channel'],
+    });
     expect(result.delivered).toBe(false);
   });
 });

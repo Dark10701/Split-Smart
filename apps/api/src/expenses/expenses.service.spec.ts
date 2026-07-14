@@ -11,9 +11,13 @@ function makeService(prismaOverrides: Record<string, unknown>) {
   const invalidate = jest.fn().mockResolvedValue(undefined);
   const balances = { invalidate } as unknown as BalancesService;
   const emitToGroup = jest.fn();
-  const realtime = { emitToGroup } as unknown as import('../realtime/realtime.gateway').RealtimeGateway;
+  const realtime = {
+    emitToGroup,
+  } as unknown as import('../realtime/realtime.gateway').RealtimeGateway;
   const notify = jest.fn().mockResolvedValue(undefined);
-  const notifications = { notify } as unknown as import('../notifications/notifications.service').NotificationsService;
+  const notifications = {
+    notify,
+  } as unknown as import('../notifications/notifications.service').NotificationsService;
   const svc = new ExpensesService(
     prismaOverrides as unknown as PrismaService,
     balances,
@@ -50,9 +54,14 @@ describe('ExpensesService', () => {
   });
 
   it('create() persists computed splits, logs activity, and invalidates the cache', async () => {
-    const expenseCreate = jest
-      .fn()
-      .mockResolvedValue({ id: 'e1', description: 'Dinner', amountMinor: 1000, currency: 'USD', splitType: 'equal', splits: [] });
+    const expenseCreate = jest.fn().mockResolvedValue({
+      id: 'e1',
+      description: 'Dinner',
+      amountMinor: 1000,
+      currency: 'USD',
+      splitType: 'equal',
+      splits: [],
+    });
     const activityCreate = jest.fn().mockResolvedValue({});
     const tx = {
       expense: { create: expenseCreate },
@@ -90,14 +99,28 @@ describe('ExpensesService', () => {
         currency: 'USD',
         payerMemberId: A,
         occurredAt: new Date().toISOString(),
-        split: { type: 'exact', shares: [{ memberId: A, amountMinor: 400 }, { memberId: B, amountMinor: 400 }] },
+        split: {
+          type: 'exact',
+          shares: [
+            { memberId: A, amountMinor: 400 },
+            { memberId: B, amountMinor: 400 },
+          ],
+        },
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('update() enforces optimistic-concurrency version match', async () => {
     const { svc } = makeService({
-      expense: { findFirst: jest.fn().mockResolvedValue({ id: 'e1', groupId: GID, version: 3, payerMemberId: A, amountMinor: 1000 }) },
+      expense: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'e1',
+          groupId: GID,
+          version: 3,
+          payerMemberId: A,
+          amountMinor: 1000,
+        }),
+      },
     });
     await expect(
       svc.update(GID, 'e1', 'user-1', { version: 2, description: 'Changed' }),
@@ -110,7 +133,14 @@ describe('ExpensesService', () => {
   });
 
   it('remove() soft-deletes, logs, and invalidates', async () => {
-    const findFirst = jest.fn().mockResolvedValue({ id: 'e1', groupId: GID, version: 1, description: 'D', amountMinor: 100, splits: [] });
+    const findFirst = jest.fn().mockResolvedValue({
+      id: 'e1',
+      groupId: GID,
+      version: 1,
+      description: 'D',
+      amountMinor: 100,
+      splits: [],
+    });
     const expenseUpdate = jest.fn().mockResolvedValue({});
     const activityCreate = jest.fn().mockResolvedValue({});
     const tx = { expense: { update: expenseUpdate }, activityLog: { create: activityCreate } };

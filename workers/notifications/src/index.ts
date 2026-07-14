@@ -13,9 +13,15 @@ const worker = new Worker(
   QUEUE_NAME,
   async (job) => {
     if (job.name === 'invite_email') {
-      const { email, token, groupId } = job.data as { email: string; token: string; groupId: string };
+      const { email, token, groupId } = job.data as {
+        email: string;
+        token: string;
+        groupId: string;
+      };
       // Stubbed sender: a real implementation would render + send via SendGrid.
-      console.log(`[notifications] (stub) emailing invite to ${email} for group ${groupId} (token ${token})`);
+      console.log(
+        `[notifications] (stub) emailing invite to ${email} for group ${groupId} (token ${token})`,
+      );
       return { sent: true };
     }
     if (job.name.startsWith('notify_')) {

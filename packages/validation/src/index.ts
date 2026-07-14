@@ -80,9 +80,7 @@ export const splitInputSchema = z.discriminatedUnion('type', [
   /** Each member owes an exact minor-unit amount; amounts must sum to the total. */
   z.object({
     type: z.literal('exact'),
-    shares: z
-      .array(z.object({ memberId, amountMinor: z.number().int().nonnegative() }))
-      .min(1),
+    shares: z.array(z.object({ memberId, amountMinor: z.number().int().nonnegative() })).min(1),
   }),
   /** Each member owes a percentage in basis points; must sum to 10000 (=100%). */
   z.object({

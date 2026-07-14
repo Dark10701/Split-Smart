@@ -34,7 +34,9 @@ const input = {
 
 describe('PaymentsService.createIntent', () => {
   it('creates a pending payment and returns a client secret', async () => {
-    const create = jest.fn().mockResolvedValue({ id: 'p1', status: 'pending', providerRef: 'pi_stub_x' });
+    const create = jest
+      .fn()
+      .mockResolvedValue({ id: 'p1', status: 'pending', providerRef: 'pi_stub_x' });
     const { svc } = makeService({
       groupMember: { findMany: jest.fn().mockResolvedValue([{ id: A }, { id: B }]) },
       payment: { findUnique: jest.fn().mockResolvedValue(null), create },
@@ -80,15 +82,27 @@ describe('PaymentsService.createIntent', () => {
     const { svc } = makeService({
       groupMember: { findMany: jest.fn().mockResolvedValue([{ id: A }]) },
     });
-    await expect(svc.createIntent(GID, 'user-1', input)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(svc.createIntent(GID, 'user-1', input)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });
 
 describe('PaymentsService.handleWebhook', () => {
   function completingPrisma() {
-    const findFirst = jest.fn().mockResolvedValue({ id: 'p1', groupId: GID, status: 'pending', providerRef: 'pi_stub_k' });
+    const findFirst = jest
+      .fn()
+      .mockResolvedValue({ id: 'p1', groupId: GID, status: 'pending', providerRef: 'pi_stub_k' });
     const updateMany = jest.fn().mockResolvedValue({ count: 1 });
-    const findUniqueOrThrow = jest.fn().mockResolvedValue({ id: 'p1', groupId: GID, createdById: 'user-1', amountMinor: 500, currency: 'USD', method: 'stripe', toMemberId: B });
+    const findUniqueOrThrow = jest.fn().mockResolvedValue({
+      id: 'p1',
+      groupId: GID,
+      createdById: 'user-1',
+      amountMinor: 500,
+      currency: 'USD',
+      method: 'stripe',
+      toMemberId: B,
+    });
     const activityCreate = jest.fn().mockResolvedValue({});
     const tx = {
       payment: { updateMany, findUniqueOrThrow },
@@ -122,7 +136,14 @@ describe('PaymentsService.handleWebhook', () => {
 
   it('is a no-op for an already-terminal payment (duplicate webhook)', async () => {
     const { svc, invalidate } = makeService({
-      payment: { findFirst: jest.fn().mockResolvedValue({ id: 'p1', groupId: GID, status: 'completed', providerRef: 'pi_stub_k' }) },
+      payment: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'p1',
+          groupId: GID,
+          status: 'completed',
+          providerRef: 'pi_stub_k',
+        }),
+      },
     });
     const result = await svc.handleWebhook('pi_stub_k:succeeded', 'sig:pi_stub_k');
     expect(result.handled).toBe(true);
@@ -152,13 +173,26 @@ describe('PaymentsService.reconcileStale', () => {
     jest.spyOn(provider, 'getIntentStatus').mockResolvedValue('succeeded');
     const updateMany = jest.fn().mockResolvedValue({ count: 1 });
     const tx = {
-      payment: { updateMany, findUniqueOrThrow: jest.fn().mockResolvedValue({ id: 'p1', groupId: GID, createdById: 'u1', amountMinor: 100, currency: 'USD', method: 'stripe', toMemberId: B }) },
+      payment: {
+        updateMany,
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          id: 'p1',
+          groupId: GID,
+          createdById: 'u1',
+          amountMinor: 100,
+          currency: 'USD',
+          method: 'stripe',
+          toMemberId: B,
+        }),
+      },
       activityLog: { create: jest.fn().mockResolvedValue({}) },
     };
     const { svc } = makeService(
       {
         payment: {
-          findMany: jest.fn().mockResolvedValue([{ id: 'p1', providerRef: 'pi_stub_stale', groupId: GID }]),
+          findMany: jest
+            .fn()
+            .mockResolvedValue([{ id: 'p1', providerRef: 'pi_stub_stale', groupId: GID }]),
         },
         groupMember: { findUnique: jest.fn().mockResolvedValue({ userId: null }) },
         $transaction: (fn: (t: unknown) => unknown) => fn(tx),
@@ -175,7 +209,9 @@ describe('PaymentsService.reconcileStale', () => {
     const { svc } = makeService(
       {
         payment: {
-          findMany: jest.fn().mockResolvedValue([{ id: 'p1', providerRef: 'pi_stub_x', groupId: GID }]),
+          findMany: jest
+            .fn()
+            .mockResolvedValue([{ id: 'p1', providerRef: 'pi_stub_x', groupId: GID }]),
         },
       },
       provider,

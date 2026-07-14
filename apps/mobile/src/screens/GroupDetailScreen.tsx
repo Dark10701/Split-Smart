@@ -103,7 +103,13 @@ export function GroupDetailScreen({ groupId, onBack }: { groupId: string; onBack
   }
 
   if (commentingOn) {
-    return <CommentsScreen groupId={groupId} expense={commentingOn} onBack={() => setCommentingOn(null)} />;
+    return (
+      <CommentsScreen
+        groupId={groupId}
+        expense={commentingOn}
+        onBack={() => setCommentingOn(null)}
+      />
+    );
   }
 
   return (
@@ -120,7 +126,11 @@ export function GroupDetailScreen({ groupId, onBack }: { groupId: string; onBack
 
       <View style={styles.tabs}>
         {(['expenses', 'balances', 'activity'] as Tab[]).map((t) => (
-          <Pressable key={t} style={[styles.tab, tab === t && styles.tabActive]} onPress={() => setTab(t)}>
+          <Pressable
+            key={t}
+            style={[styles.tab, tab === t && styles.tabActive]}
+            onPress={() => setTab(t)}
+          >
             <Text style={tab === t ? styles.tabTextActive : styles.tabText}>
               {t === 'expenses' ? 'Expenses' : t === 'balances' ? 'Balances' : 'Activity'}
             </Text>
@@ -230,14 +240,34 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: '#2563EB' },
   tabText: { color: '#111827' },
   tabTextActive: { color: '#fff', fontWeight: '600' },
-  expenseItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderColor: '#F0F1F3' },
+  expenseItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: '#F0F1F3',
+  },
   expenseMain: { flex: 1, gap: 2 },
   expenseDesc: { fontSize: 16, fontWeight: '500' },
   expenseRight: { alignItems: 'flex-end', gap: 2 },
   amount: { fontSize: 16, fontWeight: '600' },
   delete: { color: '#DC2626', fontSize: 12 },
-  settleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderColor: '#F0F1F3', gap: 12 },
-  secondaryButton: { borderWidth: 1, borderColor: '#2563EB', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
+  settleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderColor: '#F0F1F3',
+    gap: 12,
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: '#2563EB',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
   secondaryText: { color: '#2563EB', fontWeight: '600' },
   bold: { fontWeight: '700' },
   activityRow: { paddingVertical: 12, borderBottomWidth: 1, borderColor: '#F0F1F3', gap: 2 },

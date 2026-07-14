@@ -171,9 +171,15 @@ describe('computeShares', () => {
   });
 
   it('rejects non-positive or fractional totals', () => {
-    expect(() => computeShares(0, { type: 'equal', participantMemberIds: [A] })).toThrow(SplitError);
-    expect(() => computeShares(-5, { type: 'equal', participantMemberIds: [A] })).toThrow(SplitError);
-    expect(() => computeShares(10.5, { type: 'equal', participantMemberIds: [A] })).toThrow(SplitError);
+    expect(() => computeShares(0, { type: 'equal', participantMemberIds: [A] })).toThrow(
+      SplitError,
+    );
+    expect(() => computeShares(-5, { type: 'equal', participantMemberIds: [A] })).toThrow(
+      SplitError,
+    );
+    expect(() => computeShares(10.5, { type: 'equal', participantMemberIds: [A] })).toThrow(
+      SplitError,
+    );
   });
 
   it('property: shares always sum to the total for random-ish inputs', () => {

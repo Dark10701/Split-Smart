@@ -65,7 +65,12 @@ export function CommentsScreen({
 
       {error && <Text style={styles.error}>{error}</Text>}
       <View style={styles.row}>
-        <TextInput style={styles.input} placeholder="Add a comment" value={body} onChangeText={setBody} />
+        <TextInput
+          style={styles.input}
+          placeholder="Add a comment"
+          value={body}
+          onChangeText={setBody}
+        />
         <Pressable style={styles.button} onPress={() => void send()}>
           <Text style={styles.buttonText}>Send</Text>
         </Pressable>
@@ -83,7 +88,12 @@ const styles = StyleSheet.create({
   time: { color: '#9CA3AF', fontSize: 11 },
   row: { flexDirection: 'row', gap: 8 },
   input: { flex: 1, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 12 },
-  button: { backgroundColor: '#2563EB', paddingHorizontal: 16, justifyContent: 'center', borderRadius: 8 },
+  button: {
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    borderRadius: 8,
+  },
   buttonText: { color: '#fff', fontWeight: '600' },
   muted: { color: '#6B7280' },
   error: { color: '#DC2626' },

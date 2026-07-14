@@ -1,4 +1,13 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import type { ActivityLog, Comment } from '@prisma/client';
 import { createCommentSchema, listActivityQuerySchema } from '@splitsmart/validation';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -46,6 +55,11 @@ export class FeedController {
     @CurrentMembership() membership: Membership,
     @Body() body: unknown,
   ): Promise<Comment> {
-    return this.feed.addComment(groupId, expenseId, membership.userId, validate(createCommentSchema, body));
+    return this.feed.addComment(
+      groupId,
+      expenseId,
+      membership.userId,
+      validate(createCommentSchema, body),
+    );
   }
 }

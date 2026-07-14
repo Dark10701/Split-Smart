@@ -7,9 +7,12 @@ const TYPES: NotificationType[] = ['expense_added', 'settle_up', 'payment_confir
  * Default notification preferences for a new user: everything on, except SMS,
  * which is opt-in. Returns rows ready for `createMany`.
  */
-export function defaultNotificationPrefs(
-  userId: string,
-): Array<{ userId: string; channel: NotificationChannel; type: NotificationType; enabled: boolean }> {
+export function defaultNotificationPrefs(userId: string): Array<{
+  userId: string;
+  channel: NotificationChannel;
+  type: NotificationType;
+  enabled: boolean;
+}> {
   const rows = [];
   for (const channel of CHANNELS) {
     for (const type of TYPES) {

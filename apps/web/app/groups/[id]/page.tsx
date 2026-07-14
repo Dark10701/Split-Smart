@@ -91,11 +91,23 @@ export default function GroupDetailPage() {
       <a href="/groups">← Groups</a>
       <h1>{group.name}</h1>
 
-      <section style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: 16, margin: '16px 0' }}>
+      <section
+        style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: 16, margin: '16px 0' }}
+      >
         <h3>Add expense (split equally)</h3>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <input placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} style={{ padding: 10, flex: 2 }} />
-          <input placeholder={`Amount (${group.defaultCurrency})`} value={amount} onChange={(e) => setAmount(e.target.value)} style={{ padding: 10, flex: 1 }} />
+          <input
+            placeholder="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            style={{ padding: 10, flex: 2 }}
+          />
+          <input
+            placeholder={`Amount (${group.defaultCurrency})`}
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            style={{ padding: 10, flex: 1 }}
+          />
           <select value={payer} onChange={(e) => setPayer(e.target.value)} style={{ padding: 10 }}>
             {group.members.map((m) => (
               <option key={m.id} value={m.id}>
@@ -103,7 +115,9 @@ export default function GroupDetailPage() {
               </option>
             ))}
           </select>
-          <button onClick={() => void addExpense()} style={{ padding: '10px 16px' }}>Add</button>
+          <button onClick={() => void addExpense()} style={{ padding: '10px 16px' }}>
+            Add
+          </button>
         </div>
         {error && <p style={{ color: '#DC2626' }}>{error}</p>}
       </section>

@@ -68,7 +68,8 @@ export class GroupsService {
 
   async join(userId: string, token: string): Promise<GroupMember> {
     const inv = await this.prisma.invitation.findUnique({ where: { token } });
-    if (!inv || !isInviteUsable(inv)) throw new BadRequestException('Invalid or expired invitation');
+    if (!inv || !isInviteUsable(inv))
+      throw new BadRequestException('Invalid or expired invitation');
     if (await this.getMembership(inv.groupId, userId)) {
       throw new ConflictException('Already a member of this group');
     }

@@ -70,7 +70,9 @@ export class BalancesService {
     try {
       await this.redis.del(cacheKey(groupId));
     } catch (err) {
-      this.logger.warn(`Balance cache invalidation failed for ${groupId}: ${(err as Error).message}`);
+      this.logger.warn(
+        `Balance cache invalidation failed for ${groupId}: ${(err as Error).message}`,
+      );
     }
   }
 
