@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '../../../lib/auth';
 import { api, ApiError } from '../../../lib/api';
-import { AppBar } from '../../../components/ui';
+import { AppShell } from '../../../components/ui';
 
 export default function JoinPage() {
   const { token, ready } = useAuth();
@@ -38,28 +38,25 @@ export default function JoinPage() {
   }, [ready, token, inviteToken, router]);
 
   return (
-    <>
-      <AppBar />
-      <main className="container" style={{ maxWidth: 460 }}>
-        <div className="card empty">
-          {status === 'joining' && <div>Joining group…</div>}
-          {status === 'done' && (
-            <>
-              <div className="empty-emoji">✅</div>
-              <div>You&apos;re in! Redirecting…</div>
-            </>
-          )}
-          {status === 'error' && (
-            <>
-              <div className="empty-emoji">😕</div>
-              <div style={{ color: 'var(--text)', fontWeight: 600 }}>{message}</div>
-              <a href="/groups" className="btn btn-ghost btn-sm" style={{ marginTop: 12 }}>
-                Go to your groups
-              </a>
-            </>
-          )}
-        </div>
-      </main>
-    </>
+    <AppShell title="Join group" back="/groups">
+      <div className="card empty">
+        {status === 'joining' && <div>Joining group…</div>}
+        {status === 'done' && (
+          <>
+            <div className="empty-emoji">✅</div>
+            <div>You&apos;re in! Redirecting…</div>
+          </>
+        )}
+        {status === 'error' && (
+          <>
+            <div className="empty-emoji">😕</div>
+            <div style={{ color: 'var(--text)', fontWeight: 600 }}>{message}</div>
+            <a href="/groups" className="btn btn-ghost btn-sm" style={{ marginTop: 12 }}>
+              Go to your groups
+            </a>
+          </>
+        )}
+      </div>
+    </AppShell>
   );
 }

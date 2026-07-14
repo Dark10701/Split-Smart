@@ -83,12 +83,15 @@ export function SettleUpModal({
   return (
     <Modal title="Record a payment" onClose={onClose}>
       <div className="field">
-        <label className="label">Who paid</label>
-        <div className="chips">
+        <span className="label" id="settle-from-label">
+          Who paid
+        </span>
+        <div className="chips" role="group" aria-labelledby="settle-from-label">
           {members.map((m) => (
             <button
               key={m.id}
               className={`chip${from === m.id ? ' active' : ''}`}
+              aria-pressed={from === m.id}
               onClick={() => setFrom(m.id)}
             >
               {memberName(members, m.id)}
@@ -97,12 +100,15 @@ export function SettleUpModal({
         </div>
       </div>
       <div className="field">
-        <label className="label">Paid to</label>
-        <div className="chips">
+        <span className="label" id="settle-to-label">
+          Paid to
+        </span>
+        <div className="chips" role="group" aria-labelledby="settle-to-label">
           {members.map((m) => (
             <button
               key={m.id}
               className={`chip${to === m.id ? ' active' : ''}`}
+              aria-pressed={to === m.id}
               onClick={() => setTo(m.id)}
             >
               {memberName(members, m.id)}
@@ -111,8 +117,11 @@ export function SettleUpModal({
         </div>
       </div>
       <div className="field">
-        <label className="label">Amount ({currency})</label>
+        <label className="label" htmlFor="settle-amount">
+          Amount ({currency})
+        </label>
         <input
+          id="settle-amount"
           className="input"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
@@ -121,12 +130,15 @@ export function SettleUpModal({
         />
       </div>
       <div className="field">
-        <label className="label">Method</label>
-        <div className="chips">
+        <span className="label" id="settle-method-label">
+          Method
+        </span>
+        <div className="chips" role="group" aria-labelledby="settle-method-label">
           {(['cash', 'upi', 'offline'] as const).map((m) => (
             <button
               key={m}
               className={`chip${method === m ? ' active' : ''}`}
+              aria-pressed={method === m}
               onClick={() => setMethod(m)}
             >
               {m === 'cash' ? 'Cash' : m === 'upi' ? 'UPI' : 'Bank / other'}

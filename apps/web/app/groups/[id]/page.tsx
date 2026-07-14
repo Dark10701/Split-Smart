@@ -15,7 +15,7 @@ import {
   type Transfer,
   type Comment,
 } from '../../../lib/api';
-import { AppBar, Avatar, Modal } from '../../../components/ui';
+import { AppShell, Avatar, Modal } from '../../../components/ui';
 import { AddExpenseModal } from '../../../components/AddExpenseModal';
 import { SettleUpModal } from '../../../components/SettleUpModal';
 
@@ -80,45 +80,44 @@ export default function GroupDetailPage() {
 
   if (!group) {
     return (
-      <>
-        <AppBar />
-        <main className="container">
-          <div className="card empty">Loading…</div>
-        </main>
-      </>
+      <AppShell title="Group" back="/groups">
+        <div className="card empty">Loading…</div>
+      </AppShell>
     );
   }
 
   return (
-    <>
-      <AppBar>
+    <AppShell
+      title={group.name}
+      back="/groups"
+      headerRight={
         <button className="btn btn-ghost btn-sm" onClick={() => void invite()}>
           Invite
         </button>
-        <button className="btn btn-primary btn-sm" onClick={() => setAdding(true)}>
-          + Expense
-        </button>
-      </AppBar>
-
-      <main className="container">
-        <a href="/groups" className="faint" style={{ fontSize: 14 }}>
-          ← Groups
-        </a>
-        <div className="between" style={{ margin: '10px 0 18px' }}>
-          <h1 style={{ fontSize: 28 }}>{group.name}</h1>
+      }
+    >
+      <>
+        <div className="between" style={{ margin: '0 0 18px' }}>
           <div className="row" style={{ gap: -6 }}>
-            {group.members.slice(0, 5).map((m, i) => (
+            {group.members.slice(0, 6).map((m, i) => (
               <span key={m.id} style={{ marginLeft: i === 0 ? 0 : -8 }}>
-                <Avatar name={memberName(group.members, m.id)} size={30} />
+                <Avatar name={memberName(group.members, m.id)} size={32} />
               </span>
             ))}
           </div>
+          <button className="btn btn-primary btn-sm" onClick={() => setAdding(true)}>
+            + Add expense
+          </button>
         </div>
 
-        <div className="tabs" style={{ marginBottom: 18 }}>
+        <div className="tabs" style={{ marginBottom: 18 }} role="tablist" aria-label="Group views">
           {(['expenses', 'balances', 'activity'] as Tab[]).map((t) => (
             <button
               key={t}
+              role="tab"
+              id={`tab-${t}`}
+              aria-selected={tab === t}
+              aria-controls={`panel-${t}`}
               className={`tab${tab === t ? ' active' : ''}`}
               onClick={() => setTab(t)}
             >
@@ -127,55 +126,63 @@ export default function GroupDetailPage() {
           ))}
         </div>
 
-        {tab === 'expenses' && (
-          <ExpensesTab
+        <div
+          role="tabpanel"
+          id={`panel-${tab}`}
+          aria-labelledby={`tab-${tab}`}
+          tabIndex={0}
+          style={{ outline: 'none' }}
+        >
+          {tab === 'expenses' && (
+            <ExpensesTab
+              group={group}
+              expenses={expenses}
+              onComments={setOpenComments}
+              onDelete={(id) => void removeExpense(id)}
+              guestName={guestName}
+              setGuestName={setGuestName}
+              onAddGuest={() => void addGuest()}
+            />
+          )}
+          {tab === 'balances' && (
+            <BalancesTab group={group} balances={balances} onSettle={(t) => setSettling(t)} />
+          )}
+          {tab === 'activity' && <ActivityTab group={group} activity={activity} />}
+        </div>
+
+        {adding && token && (
+          <AddExpenseModal
             group={group}
-            expenses={expenses}
-            onComments={setOpenComments}
-            onDelete={(id) => void removeExpense(id)}
-            guestName={guestName}
-            setGuestName={setGuestName}
-            onAddGuest={() => void addGuest()}
+            token={token}
+            onClose={() => setAdding(false)}
+            onSaved={() => {
+              setAdding(false);
+              void load();
+            }}
           />
         )}
-        {tab === 'balances' && (
-          <BalancesTab group={group} balances={balances} onSettle={(t) => setSettling(t)} />
+        {settling && token && (
+          <SettleUpModal
+            group={group}
+            token={token}
+            suggested={settling === 'blank' ? undefined : settling}
+            onClose={() => setSettling(null)}
+            onSaved={() => {
+              setSettling(null);
+              void load();
+            }}
+          />
         )}
-        {tab === 'activity' && <ActivityTab group={group} activity={activity} />}
-      </main>
-
-      {adding && token && (
-        <AddExpenseModal
-          group={group}
-          token={token}
-          onClose={() => setAdding(false)}
-          onSaved={() => {
-            setAdding(false);
-            void load();
-          }}
-        />
-      )}
-      {settling && token && (
-        <SettleUpModal
-          group={group}
-          token={token}
-          suggested={settling === 'blank' ? undefined : settling}
-          onClose={() => setSettling(null)}
-          onSaved={() => {
-            setSettling(null);
-            void load();
-          }}
-        />
-      )}
-      {openComments && token && (
-        <CommentsModal
-          group={group}
-          token={token}
-          expense={openComments}
-          onClose={() => setOpenComments(null)}
-        />
-      )}
-    </>
+        {openComments && token && (
+          <CommentsModal
+            group={group}
+            token={token}
+            expense={openComments}
+            onClose={() => setOpenComments(null)}
+          />
+        )}
+      </>
+    </AppShell>
   );
 }
 
@@ -199,9 +206,12 @@ function ExpensesTab({
   return (
     <>
       <div className="card card-pad" style={{ marginBottom: 16 }}>
-        <label className="label">Add a guest (no account needed)</label>
+        <label className="label" htmlFor="guest-name">
+          Add a guest (no account needed)
+        </label>
         <div className="row">
           <input
+            id="guest-name"
             className="input"
             placeholder="Guest name"
             value={guestName}
@@ -218,7 +228,7 @@ function ExpensesTab({
         <div className="card empty">
           <div className="empty-emoji">🧾</div>
           <div style={{ fontWeight: 600, color: 'var(--text)' }}>No expenses yet</div>
-          <div>Tap “+ Expense” to add the first one.</div>
+          <div>Tap “+ Add expense” to add the first one.</div>
         </div>
       ) : (
         <div className="card card-pad">

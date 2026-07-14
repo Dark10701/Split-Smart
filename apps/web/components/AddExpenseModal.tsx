@@ -159,8 +159,11 @@ export function AddExpenseModal({
   return (
     <Modal title="Add expense" onClose={onClose}>
       <div className="field">
-        <label className="label">Description</label>
+        <label className="label" htmlFor="expense-description">
+          Description
+        </label>
         <input
+          id="expense-description"
           className="input"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -169,8 +172,11 @@ export function AddExpenseModal({
         />
       </div>
       <div className="field">
-        <label className="label">Amount ({group.defaultCurrency})</label>
+        <label className="label" htmlFor="expense-amount">
+          Amount ({group.defaultCurrency})
+        </label>
         <input
+          id="expense-amount"
           className="input"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
@@ -180,12 +186,15 @@ export function AddExpenseModal({
       </div>
 
       <div className="field">
-        <label className="label">Paid by</label>
-        <div className="chips">
+        <span className="label" id="expense-payer-label">
+          Paid by
+        </span>
+        <div className="chips" role="group" aria-labelledby="expense-payer-label">
           {members.map((m) => (
             <button
               key={m.id}
               className={`chip${payer === m.id ? ' active' : ''}`}
+              aria-pressed={payer === m.id}
               onClick={() => setPayer(m.id)}
             >
               {memberName(members, m.id)}
@@ -195,12 +204,15 @@ export function AddExpenseModal({
       </div>
 
       <div className="field">
-        <label className="label">Split</label>
-        <div className="chips">
+        <span className="label" id="expense-split-label">
+          Split
+        </span>
+        <div className="chips" role="group" aria-labelledby="expense-split-label">
           {METHODS.map((mth) => (
             <button
               key={mth.key}
               className={`chip${method === mth.key ? ' active' : ''}`}
+              aria-pressed={method === mth.key}
               onClick={() => setMethod(mth.key)}
             >
               {mth.label}

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 import { api, ApiError, type Me } from '../../lib/api';
-import { AppBar, Avatar } from '../../components/ui';
+import { AppShell, Avatar } from '../../components/ui';
 
 export default function ProfilePage() {
   const { token, ready } = useAuth();
@@ -68,74 +68,66 @@ export default function ProfilePage() {
   };
 
   return (
-    <>
-      <AppBar>
-        <a href="/groups" className="btn btn-ghost btn-sm">
-          ← Groups
-        </a>
-      </AppBar>
+    <AppShell title="Profile" active="profile">
+      <h1 style={{ fontSize: 24, marginBottom: 16 }}>Your profile</h1>
 
-      <main className="container" style={{ maxWidth: 520 }}>
-        <h1 style={{ fontSize: 28, marginBottom: 18 }}>Your profile</h1>
-
-        {!me ? (
-          <div className="card empty">Loading…</div>
-        ) : (
-          <div className="card card-pad">
-            <div className="row" style={{ gap: 14, marginBottom: 20 }}>
-              <Avatar name={me.name} size={48} />
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 17 }}>{me.name}</div>
-                <div className="muted" style={{ fontSize: 14 }}>
-                  {me.email}
-                </div>
+      {!me ? (
+        <div className="card empty">Loading…</div>
+      ) : (
+        <div className="card card-pad">
+          <div className="row" style={{ gap: 14, marginBottom: 20 }}>
+            <Avatar name={me.name} size={48} />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 17 }}>{me.name}</div>
+              <div className="muted" style={{ fontSize: 14 }}>
+                {me.email}
               </div>
             </div>
-
-            <div className="field">
-              <label className="label" htmlFor="name">
-                Name
-              </label>
-              <input
-                id="name"
-                className="input"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-
-            <div className="field">
-              <label className="label" htmlFor="upi">
-                UPI ID
-              </label>
-              <input
-                id="upi"
-                className="input"
-                value={upi}
-                onChange={(e) => setUpi(e.target.value)}
-                autoCapitalize="none"
-                spellCheck={false}
-                placeholder="yourname@bank  or  upi://pay?pa=…"
-              />
-              <p className="faint" style={{ fontSize: 13, margin: '7px 0 0' }}>
-                Type your UPI ID, or paste a UPI payment link / your UPI QR&apos;s contents. Members
-                use this to pay you directly. Leave blank to remove.
-              </p>
-            </div>
-
-            {error && <p className="error">{error}</p>}
-            {msg && <p className="success-text">{msg}</p>}
-            <button
-              className="btn btn-primary btn-block"
-              onClick={() => void save()}
-              disabled={saving}
-              style={{ marginTop: 6 }}
-            >
-              {saving ? 'Saving…' : 'Save changes'}
-            </button>
           </div>
-        )}
-      </main>
-    </>
+
+          <div className="field">
+            <label className="label" htmlFor="name">
+              Name
+            </label>
+            <input
+              id="name"
+              className="input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+
+          <div className="field">
+            <label className="label" htmlFor="upi">
+              UPI ID
+            </label>
+            <input
+              id="upi"
+              className="input"
+              value={upi}
+              onChange={(e) => setUpi(e.target.value)}
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="yourname@bank  or  upi://pay?pa=…"
+            />
+            <p className="faint" style={{ fontSize: 13, margin: '7px 0 0' }}>
+              Type your UPI ID, or paste a UPI payment link / your UPI QR&apos;s contents. Members
+              use this to pay you directly. Leave blank to remove.
+            </p>
+          </div>
+
+          {error && <p className="error">{error}</p>}
+          {msg && <p className="success-text">{msg}</p>}
+          <button
+            className="btn btn-primary btn-block"
+            onClick={() => void save()}
+            disabled={saving}
+            style={{ marginTop: 6 }}
+          >
+            {saving ? 'Saving…' : 'Save changes'}
+          </button>
+        </div>
+      )}
+    </AppShell>
   );
 }
