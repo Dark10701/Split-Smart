@@ -28,7 +28,7 @@ Every ticket below is scoped to be completable in **under two hours**. Tickets a
 - [x] **M0-08** Add Dockerfile for the API service.
 - [x] **M0-09** Write `docker-compose.yml` for Postgres + Redis locally.
 - [x] **M0-10** Add database client (Prisma/TypeORM) + initial connection config. *(Prisma client + PrismaService)*
-- [~] **M0-11** Create initial migration (empty/baseline) and run it. *(baseline `schema.prisma` written; `prisma migrate dev` not yet run — needs a live DB)*
+- [x] **M0-11** Create initial migration (empty/baseline) and run it. *(2026-07-14: all migrations 0000–0004 applied to a live Postgres 16 via `prisma migrate deploy`; `prisma migrate diff` reports zero drift vs `schema.prisma`)*
 - [x] **M0-12** Add Redis connection module to the API.
 - [x] **M0-13** Scaffold Expo mobile app in `apps/mobile`. *(type-checks cleanly; `expo start` device run still do locally)*
 - [x] **M0-14** Scaffold Next.js web app in `apps/web`. *(type-checks cleanly)*
@@ -45,8 +45,8 @@ Every ticket below is scoped to be completable in **under two hours**. Tickets a
 
 - [x] **M0-V1** `pnpm install` succeeds; `pnpm-lock.yaml` regenerated/updated.
 - [x] **M0-V2** Build + tests verified: packages (build + 6 passing tests), workers (build), web + mobile (typecheck), API (build + passing health test, server boots `/health` → 200). *Fixes applied during verification: added `@types/node` to types/validation/mobile; resolved a BullMQ/ioredis version clash in workers; added `class-validator`/`class-transformer` to the API; added `apps/api/tsconfig.build.json`; removed an unsupported Expo `newArchEnabled` field.*
-- [ ] **M0-V3** `docker compose up -d` and confirm Postgres + Redis healthy. *(needs Docker — run locally)*
-- [ ] **M0-V4** On your machine: `pnpm --filter @splitsmart/api prisma:generate`, then `pnpm dev` — confirm API `/health` → ok with the DB module, web shows API health, Expo app boots. *(Prisma engine CDN was blocked in the sandbox, so DB-connected boot is the one step to confirm locally.)*
+- [x] **M0-V3** `docker compose up -d` and confirm Postgres + Redis healthy. *(2026-07-14: both containers healthy)*
+- [~] **M0-V4** On your machine: `pnpm --filter @splitsmart/api prisma:generate`, then `pnpm dev` — confirm API `/health` → ok with the DB module, web shows API health, Expo app boots. *(2026-07-14: API boots DB-connected with `/health` → ok; web dev server shows API health and the full flow works in-browser. Expo device boot still to run on a phone/simulator.)*
 
 ---
 
@@ -296,9 +296,20 @@ Run against a live API + Postgres + Redis (`docker compose up -d`, `prisma migra
 - [x] **M5-26** Tests: VPA validation/normalization + deep-link builder + settlement method. *(16 new tests: 10 in `packages/types`, 6 in validation)*
 
 > **UPI slice verified (2026-07-14):** whole-workspace typecheck/lint/build
-> (10/10 each); tests total **113** (API 73, validation 26, types 10, worker 4);
-> `prisma validate` passes and the client regenerated. Live-DB run of
-> `0004_upi_inr` pending (no Docker here), same as 0002/0003.
+> (10/10 each); tests total **114** (API 73, validation 27, types 10, worker 4);
+> `prisma validate` passes and the client regenerated.
+>
+> **Live end-to-end test (2026-07-14, Docker Postgres 16 + Redis 7):** all five
+> migrations applied via `migrate deploy` with **zero schema drift**. Full flow
+> exercised against the running API (real JWT auth via a local JWKS stub) and
+> the web UI in a browser: two users sign in → INR defaults on user+group →
+> UPI ID set by pasting a `upi://` QR link (normalized to `maya@okhdfcbank`),
+> malformed/garbage input → 400 → invite/join → ₹900 equal-split expense
+> (splits reconcile) → balances show minimized transfer → **UPI settlement
+> recorded, idempotency retry returns the same payment (no double-record)** →
+> balances zero → activity log shows expense + payment, comments post →
+> unauthenticated access → 401 → web UI renders "Ravi owes Maya ₹120.25 · pay
+> via UPI: maya@okhdfcbank" with an odd amount splitting exactly.
 
 ---
 
