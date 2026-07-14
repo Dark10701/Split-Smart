@@ -25,7 +25,7 @@ export class GroupsService {
       const group = await tx.group.create({
         data: {
           name: input.name,
-          defaultCurrency: input.defaultCurrency ?? 'USD',
+          defaultCurrency: input.defaultCurrency ?? 'INR',
           createdById: creatorUserId,
         },
       });

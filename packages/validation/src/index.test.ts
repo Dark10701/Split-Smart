@@ -232,6 +232,11 @@ describe('UPI validation (M5)', () => {
     expect(normalizeUpiInput('upi://pay?pn=NoVpaHere')).toBeNull();
   });
 
+  it('returns null (not a throw) for malformed percent-escapes in links', () => {
+    expect(normalizeUpiInput('upi://pay?pa=maya%ZZ@ybl')).toBeNull();
+    expect(upiIdInputSchema.safeParse('upi://pay?pa=maya%ZZ@ybl').success).toBe(false);
+  });
+
   it('upiIdInputSchema transforms input to the normalized VPA', () => {
     const ok = upiIdInputSchema.safeParse('upi://pay?pa=Maya@okhdfcbank&pn=M');
     expect(ok.success).toBe(true);

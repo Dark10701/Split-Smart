@@ -44,8 +44,13 @@ export function normalizeUpiInput(raw: string): string | null {
   // upi://pay?pa=<vpa>&pn=... — tolerate any scheme/host, just read `pa`.
   const paMatch = /[?&]pa=([^&\s]+)/i.exec(input);
   if (paMatch?.[1]) {
-    const candidate = decodeURIComponent(paMatch[1]).trim();
-    if (VPA_REGEX.test(candidate)) return candidate.toLowerCase();
+    try {
+      const candidate = decodeURIComponent(paMatch[1]).trim();
+      if (VPA_REGEX.test(candidate)) return candidate.toLowerCase();
+    } catch {
+      // Malformed percent-escape (e.g. `pa=maya%ZZ@ybl`) — not a valid link.
+      return null;
+    }
   }
   return null;
 }

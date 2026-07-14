@@ -45,7 +45,10 @@ export function SettleUpScreen({
   const [saving, setSaving] = useState(false);
 
   const payee = members.find((m) => m.id === to);
-  const payeeVpa = payee?.user?.upiId ?? null;
+  // UPI transfers are INR-only: the deep link hardcodes cu=INR and treats the
+  // minor units as paise, so hide the handoff for historical non-INR groups.
+  const settleCurrency = suggested?.currency ?? group.defaultCurrency;
+  const payeeVpa = settleCurrency === 'INR' ? (payee?.user?.upiId ?? null) : null;
 
   /** Open the payer's UPI app pre-filled with the payee's VPA and the amount (M5-25). */
   const payViaUpi = async (): Promise<void> => {
@@ -160,7 +163,8 @@ export function SettleUpScreen({
           </Text>
         </Pressable>
       ) : (
-        payee && (
+        payee &&
+        settleCurrency === 'INR' && (
           <Text style={styles.muted}>
             {memberLabel(members, to)} hasn&apos;t added a UPI ID yet — settle in cash or ask them
             to add one in their profile.
