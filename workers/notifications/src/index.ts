@@ -1,4 +1,5 @@
 import { Worker } from 'bullmq';
+import { deliver, type NotificationJob } from './channels';
 
 const QUEUE_NAME = 'notifications';
 const url = new URL(process.env.REDIS_URL ?? 'redis://localhost:6379');
@@ -16,6 +17,10 @@ const worker = new Worker(
       // Stubbed sender: a real implementation would render + send via SendGrid.
       console.log(`[notifications] (stub) emailing invite to ${email} for group ${groupId} (token ${token})`);
       return { sent: true };
+    }
+    if (job.name.startsWith('notify_')) {
+      // Per-channel domain notification enqueued by the API (M3-10/11).
+      return deliver(job.data as NotificationJob);
     }
     console.log(`[notifications] received job ${job.id}`, job.name);
     return { handled: true };

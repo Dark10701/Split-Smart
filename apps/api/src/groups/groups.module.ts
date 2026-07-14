@@ -10,6 +10,6 @@ import { GroupMembershipGuard } from './group-membership.guard';
   imports: [AuthModule, UsersModule, QueueModule],
   providers: [GroupsService, GroupMembershipGuard],
   controllers: [GroupsController],
-  exports: [GroupsService],
+  exports: [GroupsService, GroupMembershipGuard],
 })
 export class GroupsModule {}

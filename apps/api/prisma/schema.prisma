@@ -1,5 +1,6 @@
 // SplitSmart schema. Money is stored as integer minor units + explicit currency
-// in later milestones. M1 adds users, notification prefs, groups, and membership.
+// — never floats. M1 adds users, notification prefs, groups, and membership.
+// M2 adds expenses, splits, and the activity log.
 
 generator client {
   provider = "prisma-client-js"
@@ -29,6 +30,9 @@ model User {
   notificationPrefs NotificationPref[]
   groupsCreated     Group[]            @relation("GroupsCreated")
   groupMemberships  GroupMember[]
+  expensesCreated   Expense[]          @relation("ExpensesCreated")
+  activityEntries   ActivityLog[]
+  comments          Comment[]
 }
 
 enum NotificationChannel {
@@ -74,6 +78,9 @@ model Group {
 
   members     GroupMember[]
   invitations Invitation[]
+  expenses    Expense[]
+  payments    Payment[]
+  activityLog ActivityLog[]
 
   @@index([createdById])
 }
@@ -90,8 +97,135 @@ model GroupMember {
   joinedAt  DateTime  @default(now())
   removedAt DateTime?
 
+  expensesPaid  Expense[]      @relation("ExpensePayer")
+  splits        ExpenseSplit[]
+  paymentsFrom  Payment[]      @relation("PaymentFrom")
+  paymentsTo    Payment[]      @relation("PaymentTo")
+
   @@unique([groupId, userId])
   @@index([userId])
+}
+
+enum SplitType {
+  equal
+  exact
+  percentage
+  shares
+  itemized
+}
+
+/// A shared expense. Money is integer minor units + ISO-4217 currency.
+/// Edits bump `version`; deletes are soft (`deletedAt`) — never silent loss.
+model Expense {
+  id            String      @id @default(uuid())
+  groupId       String
+  group         Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payerMemberId String
+  payer         GroupMember @relation("ExpensePayer", fields: [payerMemberId], references: [id])
+  amountMinor   Int
+  currency      String
+  category      String?
+  description   String
+  occurredAt    DateTime
+  splitType     SplitType
+  createdById   String
+  createdBy     User        @relation("ExpensesCreated", fields: [createdById], references: [id])
+  version       Int         @default(1)
+  deletedAt     DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  splits   ExpenseSplit[]
+  comments Comment[]
+
+  @@index([groupId, occurredAt])
+  @@index([payerMemberId])
+}
+
+/// One participant's share of an expense. Shares always sum to the expense
+/// total (enforced in the service layer and re-checked by the balance engine).
+model ExpenseSplit {
+  id         String      @id @default(uuid())
+  expenseId  String
+  expense    Expense     @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  memberId   String
+  member     GroupMember @relation(fields: [memberId], references: [id])
+  shareMinor Int
+
+  @@unique([expenseId, memberId])
+  @@index([memberId])
+}
+
+enum ActivityAction {
+  created
+  updated
+  deleted
+}
+
+/// Append-only audit trail of every financial mutation in a group.
+model ActivityLog {
+  id         String         @id @default(uuid())
+  groupId    String
+  group      Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  actorId    String
+  actor      User           @relation(fields: [actorId], references: [id])
+  entityType String // 'expense' | 'payment' | 'member' | ...
+  entityId   String
+  action     ActivityAction
+  payload    Json
+  createdAt  DateTime       @default(now())
+
+  @@index([groupId, createdAt])
+  @@index([entityType, entityId])
+}
+
+enum PaymentMethod {
+  cash
+  offline
+  stripe
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+}
+
+/// A settlement between two members. Manual (cash/offline) settlements are
+/// `completed` immediately; in-app (stripe) payments move through `pending`
+/// in M4. `idempotencyKey` prevents double-processing — money is sacred.
+model Payment {
+  id             String        @id @default(uuid())
+  groupId        String
+  group          Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  fromMemberId   String
+  fromMember     GroupMember   @relation("PaymentFrom", fields: [fromMemberId], references: [id])
+  toMemberId     String
+  toMember       GroupMember   @relation("PaymentTo", fields: [toMemberId], references: [id])
+  amountMinor    Int
+  currency       String
+  method         PaymentMethod
+  status         PaymentStatus @default(completed)
+  providerRef    String? // Stripe payment-intent id in M4
+  idempotencyKey String        @unique
+  createdById    String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([groupId, createdAt])
+}
+
+/// A comment thread entry on an expense.
+model Comment {
+  id        String   @id @default(uuid())
+  expenseId String
+  expense   Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([expenseId, createdAt])
 }
 
 /// A pending invitation to join a group via a shareable token.
