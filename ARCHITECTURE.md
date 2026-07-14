@@ -1,9 +1,19 @@
 # SplitSmart — System Architecture
 
-**Version:** 1.0
+**Version:** 1.1
 **Status:** Draft
-**Last updated:** June 28, 2026
+**Last updated:** July 14, 2026
 **Companion doc:** PRD.md
+
+> **v1.1 (2026-07-14):** India-first pivot. All v1 money is **INR (integer
+> paise)**; the FX/currency-sync pipeline is deferred to post-v1 (the worker
+> skeleton stays in the repo, idle). Settlement is **UPI-first**: users attach a
+> UPI ID (VPA) to their profile — typed, or extracted from a pasted `upi://`
+> link / UPI QR contents — and payers settle through any UPI app via a
+> `upi://pay` deep link, then record the payment. SplitSmart never initiates or
+> captures the UPI transaction, so no PSP licensing is needed. The
+> provider-agnostic payment-intent orchestration (M4) remains in place for a
+> future card/Stripe rail. See §13 for the decision record.
 
 ---
 
@@ -39,8 +49,8 @@ SplitSmart is a cloud-native, API-first application built around a small set of 
             │ worker   │   │ worker       │ │ worker       │ │ sync job  │
             └────┬─────┘   └──────┬───────┘ └──────┬───────┘ └───────────┘
                  │                │                │
-          Object Storage   Push/Email/SMS    Payment Processor
-          (receipts)       providers         (Stripe)
+          Object Storage   Push/Email/SMS    UPI apps (deep link;
+          (receipts)       providers         Stripe deferred)
 ```
 
 ---
@@ -60,7 +70,7 @@ SplitSmart is a cloud-native, API-first application built around a small set of 
 | Auth | **OAuth 2.0 / OIDC via Auth0 (or Clerk)** | Offloads social login, MFA, and token security to a hardened provider; PKCE for mobile. |
 | OCR | **Cloud OCR (AWS Textract / Google Vision)** + worker | Production-grade receipt extraction without training models in-house. |
 | Notifications | **FCM/APNs** (push), **SendGrid** (email), **Twilio** (SMS) | Best-in-class, reliable delivery per channel. |
-| Payments | **Stripe** (Connect / payment intents) | PCI-compliant, idempotent APIs, broad coverage; SplitSmart never holds funds. |
+| Payments | **UPI deep links** (`upi://pay`) for v1; Stripe deferred | Zero-cost, universal in India, no PSP licensing (the user's UPI app executes the payment; SplitSmart records it). The provider-agnostic intent orchestration keeps a clean seam for Stripe later. |
 | Infra | **AWS** + **Docker** + **Kubernetes (EKS)** or **ECS Fargate** | Standard, scalable, portable container orchestration. Fargate for lower ops overhead early. |
 | IaC | **Terraform** | Reproducible, version-controlled infrastructure. |
 | CI/CD | **GitHub Actions** | Tight repo integration, mature ecosystem, easy environment gating. |
@@ -88,22 +98,22 @@ Core modules:
 - **Groups** — membership, roles, invitations, guests.
 - **Expenses** — creation, edits (versioned), split strategies, receipts.
 - **Balances** — deterministic balance engine + debt-minimization algorithm.
-- **Settlement** — manual settlements and payment-intent orchestration.
+- **Settlement** — UPI deep-link settle-up (payee VPA + amount → `upi://pay` URI), manual settlements, and provider-agnostic payment-intent orchestration (idle until a card rail ships).
 - **Feed & Comments** — auditable activity log.
 - **Notifications** — preference resolution + dispatch to workers.
 
 The **balance engine** is a pure, deterministic module: given the ordered set of expenses and payments for a group it computes per-pair balances, then runs debt simplification to produce the minimum transaction set. Being side-effect-free makes it exhaustively testable.
 
-Slow or external work (OCR, notification delivery, payment capture, currency refresh) is pushed onto the queue and handled by **workers**, keeping API latency low and isolating third-party failures.
+Slow or external work (OCR, notification delivery, future payment capture) is pushed onto the queue and handled by **workers**, keeping API latency low and isolating third-party failures. (The currency-sync worker is idle in v1 — FX is post-v1.)
 
 ---
 
 ## 5. Database
 
-**PostgreSQL** is the system of record. Money is stored as integer minor units (e.g. cents) with an explicit currency code — never floating point. Schema highlights:
+**PostgreSQL** is the system of record. Money is stored as integer minor units (paise — all v1 amounts are INR) with an explicit currency code kept on every row so multi-currency can arrive post-v1 without a rewrite — never floating point. `users.upi_id` holds the validated UPI VPA a user has attached for settle-up. Schema highlights:
 
 ```
-users(id, email, name, default_currency, created_at, ...)
+users(id, email, name, default_currency, upi_id, created_at, ...)
 groups(id, name, created_by, default_currency, created_at)
 group_members(group_id, user_id, role, joined_at, removed_at)
 expenses(id, group_id, payer_id, amount_minor, currency, category,
@@ -239,6 +249,7 @@ splitsmart/
 
 - **Modular monolith over microservices (v1):** lower operational cost and complexity at launch; clean module boundaries preserve the option to extract services later.
 - **REST + WebSockets over GraphQL:** simpler caching, a documented contract, and straightforward realtime; GraphQL remains an option if client data-fetching needs grow.
+- **UPI-first settlement over card processing (v1, decided 2026-07-14):** India-only launch makes UPI the universal rail. Deep-link handoff (`upi://pay` with payee VPA + amount) costs nothing, needs no PSP/PA license (SplitSmart never touches the funds), and works with every UPI app. Trade-off: the payment isn't verified by SplitSmart — the payer records it, exactly like a cash settlement; a TPAP integration for verified status is a post-v1 option. Consequence: multi-currency/FX and the Stripe rail are deferred (seams retained: explicit currency on every row, provider-agnostic intent orchestration, idle currency-sync worker).
 - **Managed auth/payments/OCR over in-house:** moves PCI, identity, and ML burden to specialized providers so the team focuses on core splitting logic.
 - **Postgres over NoSQL:** financial correctness and relational integrity outweigh schema flexibility; the data is inherently relational.
 - **React Native + Next.js in one monorepo:** maximizes code/type sharing and team velocity across platforms.

@@ -1,9 +1,17 @@
 # SplitSmart — Product Requirements Document
 
-**Version:** 1.0
+**Version:** 1.1
 **Status:** Draft
-**Last updated:** June 28, 2026
+**Last updated:** July 14, 2026
 **Owner:** Product
+
+> **v1.1 scope change (2026-07-14):** SplitSmart v1 is **India-first**. All money
+> is INR; multi-currency support moves to post-v1. In its place, v1 adds
+> **UPI-based settlement**: a user can add their UPI ID (or paste a `upi://`
+> link / their UPI QR's contents) to their profile, and anyone who owes them can
+> settle through any UPI app with the amount pre-filled, then record the payment
+> in SplitSmart. UPI is the primary settlement rail; card-based in-app payments
+> (Stripe) are deferred.
 
 ---
 
@@ -22,14 +30,16 @@ The primary goals for SplitSmart are:
 - **Eliminate friction in shared spending.** Make it trivial to record an expense, split it any way, and know exactly what each person owes in real time.
 - **Drive settlement.** Reduce the time and effort between an expense being logged and balances being settled, including optional in-app payment.
 - **Build trust through transparency.** Every member can see a complete, auditable history of expenses, splits, and payments.
-- **Support real-world group dynamics.** Handle unequal splits, multiple currencies, recurring costs, and partial payments without forcing users into rigid models.
+- **Support real-world group dynamics.** Handle unequal splits, recurring costs, and partial payments without forcing users into rigid models.
 - **Achieve sustainable growth.** Reach product-market fit with strong retention and organic, network-driven user acquisition.
 
 ### Non-goals (for v1)
 
 - Full personal-finance management or budgeting beyond shared expenses.
-- Acting as a money-transmitter / holding user funds (settlement is routed through third-party processors).
+- Acting as a money-transmitter / holding user funds (settlement happens directly between users over UPI, or offline).
 - Business accounting, invoicing, or tax preparation.
+- Multi-currency support and markets outside India (post-v1).
+- Card-based in-app payment processing (Stripe) — deferred; UPI is the v1 settlement rail.
 
 ---
 
@@ -38,11 +48,11 @@ The primary goals for SplitSmart are:
 | Segment | Description | Core need |
 |---|---|---|
 | **Roommates** | People sharing rent, utilities, and household supplies on an ongoing basis. | Recurring bills, persistent balances, fair allocation. |
-| **Travelers** | Friends or family splitting costs on a trip. | Multi-currency, quick entry on the go, settle-up at the end. |
+| **Travelers** | Friends or family splitting costs on a trip within India. | Quick entry on the go, settle-up at the end via UPI. |
 | **Couples** | Partners managing shared and personal expenses. | Simple ongoing ledger, privacy, flexible splits. |
 | **Social groups** | Friends splitting dinners, events, gifts, subscriptions. | One-off splits, easy reminders, low setup cost. |
 
-**Primary persona — "Maya, 27, urban renter":** Tech-comfortable, splits rent and groceries with two roommates and frequently covers group dinners. Wants to stop fronting money and chasing people, and wants the math handled automatically.
+**Primary persona — "Maya, 27, urban renter in Bengaluru":** Tech-comfortable, pays for everything over UPI, splits rent and groceries with two roommates and frequently covers group dinners. Wants to stop fronting money and chasing people, and wants the math handled automatically — with settle-up as easy as any other UPI payment.
 
 ---
 
@@ -58,13 +68,13 @@ The primary goals for SplitSmart are:
 
 **Real-time balances.** Continuously computed per-member and per-group balances showing who owes whom, with simplified "debt minimization" so the fewest transactions settle the group.
 
-**Settlement.** Record manual (cash/offline) settlements, or settle in-app via integrated payment provider. Partial payments supported.
+**Settlement via UPI.** Every user can add their **UPI ID** to their profile — typed directly, or by pasting a `upi://` payment link or the contents of their UPI QR. When someone owes them, SplitSmart shows a "Pay via UPI" action that opens any UPI app (GPay, PhonePe, Paytm, BHIM…) with payee and amount pre-filled; the payer then records the settlement in SplitSmart. Manual (cash/offline) settlements and partial payments are also supported.
 
 **Activity feed & history.** Chronological, auditable log of all expenses, edits, and payments, with comments per expense.
 
 **Notifications.** Push, email, and in-app notifications for new expenses, settle-up requests, reminders, and payment confirmations.
 
-**Multi-currency.** Record expenses in any currency with live exchange rates; display balances in each member's preferred currency.
+**INR everywhere.** All amounts are Indian Rupees, stored as integer paise. (Multi-currency is a post-v1 feature; the data model keeps an explicit currency code so it can be added without a rewrite.)
 
 ### 4.2 Supporting
 
@@ -92,7 +102,8 @@ The primary goals for SplitSmart are:
 - As a user, I want the app to minimize the number of payments needed so settling is simple.
 
 **Settling up**
-- As a user, I want to pay someone directly in the app so I don't switch to another payment service.
+- As a user, I want to add my UPI ID (or paste my UPI QR link) to my profile once so anyone who owes me can pay me directly.
+- As a user, I want to tap "Pay via UPI" on a balance and land in my UPI app with the payee and amount pre-filled so settling takes seconds.
 - As a user, I want to record a cash payment so offline settlements stay in sync.
 - As a user, I want to send a gentle reminder so I don't have to chase people manually.
 
@@ -120,7 +131,7 @@ The primary goals for SplitSmart are:
 
 **Accessibility.** WCAG 2.1 AA conformance — screen-reader support, sufficient contrast, scalable text, full keyboard navigation on web.
 
-**Localization.** Multi-currency, multi-language framework, and locale-aware date/number formatting.
+**Localization.** India-first: INR-only amounts with Indian digit grouping (₹1,23,456.78), and a multi-language framework ready for Indian languages. (Multi-currency is post-v1.)
 
 **Observability.** Centralized logging, metrics, distributed tracing, and alerting on error rate and latency SLOs.
 
@@ -146,15 +157,18 @@ The primary goals for SplitSmart are:
 
 - Users have a smartphone with internet connectivity for most actions; brief offline use is supported.
 - Most group members will adopt the app once invited (network effect drives growth).
-- A third-party, PCI-compliant payment processor is available in target markets for in-app settlement.
-- Reliable real-time currency exchange-rate data is accessible via a third-party API.
+- Users have at least one UPI app installed and a UPI ID; UPI deep links (`upi://pay`) open the user's UPI app with payee/amount pre-filled.
+- SplitSmart never initiates or captures the UPI transaction itself — it hands off to the user's UPI app and records the settlement the user confirms, so no PSP/PA licensing is required for v1.
 - Users are willing to grant notification and (optionally) contacts permissions.
-- Initial launch markets share broadly compatible payment rails and regulatory regimes.
+- v1 launches in India only (INR, UPI rails, Indian data-privacy regime — DPDP Act).
 
 ---
 
 ## 9. Future Features (Post-v1)
 
+- **Multi-currency** expenses with live FX and per-member display currency (international expansion).
+- **In-app card payments** via a PCI-compliant processor (Stripe) where UPI isn't an option.
+- **UPI deep-link verification** (collect requests / payment status callbacks via a UPI TPAP partnership).
 - **Recurring expenses & subscriptions** with automatic monthly posting.
 - **Bank / card linking** to auto-import and suggest shared transactions.
 - **AI receipt scanning** to auto-extract line items and assign splits.
@@ -183,7 +197,9 @@ The release is considered ready when the following are met:
 **Balances & settlement**
 - Per-member and per-group balances are accurate and update within 500ms of any change.
 - Debt simplification produces the minimum set of transactions to settle a group.
-- A user can record a manual settlement and complete an in-app payment; partial payments update balances correctly and are idempotent (no double-charge).
+- A user can add a UPI ID to their profile by typing it or pasting a `upi://` link / UPI QR contents; invalid VPAs are rejected.
+- Tapping "Pay via UPI" on a balance opens a UPI app with the payee's VPA and the exact amount pre-filled, and the payer can record the settlement immediately after.
+- A user can record a manual settlement; partial payments update balances correctly and every settlement write is idempotent (no double-record).
 
 **Transparency & notifications**
 - Every expense, edit, and payment is visible in an auditable activity feed attributed to the actor.

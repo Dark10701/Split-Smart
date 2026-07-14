@@ -14,7 +14,11 @@ import {
 
 function memberName(members: GroupMember[], id: string): string {
   const m = members.find((x) => x.id === id);
-  return m ? (m.guestName ?? (m.userId ? 'Member' : 'Guest')) : 'Unknown';
+  return m ? (m.user?.name ?? m.guestName ?? 'Member') : 'Unknown';
+}
+
+function memberUpi(members: GroupMember[], id: string): string | null {
+  return members.find((x) => x.id === id)?.user?.upiId ?? null;
 }
 
 /** Parse a decimal major-unit string into integer minor units. */
@@ -138,13 +142,22 @@ export default function GroupDetailPage() {
       <h3>Who owes whom</h3>
       {balances && balances.settlements.length > 0 ? (
         <ul>
-          {balances.settlements.map((t, i) => (
-            <li key={i}>
-              <strong>{memberName(group.members, t.fromMemberId)}</strong> owes{' '}
-              <strong>{memberName(group.members, t.toMemberId)}</strong>{' '}
-              {formatMoney(t.amountMinor, t.currency)}
-            </li>
-          ))}
+          {balances.settlements.map((t, i) => {
+            const vpa = memberUpi(group.members, t.toMemberId);
+            return (
+              <li key={i}>
+                <strong>{memberName(group.members, t.fromMemberId)}</strong> owes{' '}
+                <strong>{memberName(group.members, t.toMemberId)}</strong>{' '}
+                {formatMoney(t.amountMinor, t.currency)}
+                {vpa && (
+                  <span style={{ color: '#059669' }}>
+                    {' '}
+                    · pay via UPI: <code>{vpa}</code>
+                  </span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <p style={{ color: '#6B7280' }}>All settled up 🎉</p>

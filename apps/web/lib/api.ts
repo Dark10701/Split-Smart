@@ -11,6 +11,8 @@ export interface GroupMember {
   userId: string | null;
   guestName: string | null;
   role: string;
+  /** Display name + UPI VPA of the linked account (null for guests). */
+  user: { name: string; upiId: string | null } | null;
 }
 export interface GroupDetail extends Group {
   members: GroupMember[];

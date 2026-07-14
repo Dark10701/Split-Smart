@@ -30,3 +30,4 @@ export interface HealthStatus {
 }
 
 export * from './money';
+export * from './upi';
