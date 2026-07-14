@@ -114,6 +114,36 @@ describe('expense validation (M2)', () => {
     ).toBe(true);
   });
 
+  it('accepts an itemized split and rejects empty/invalid items', () => {
+    expect(
+      splitInputSchema.safeParse({
+        type: 'itemized',
+        items: [
+          { description: 'Starter', amountMinor: 300, participantMemberIds: [uid(1), uid(2)] },
+        ],
+      }).success,
+    ).toBe(true);
+    expect(splitInputSchema.safeParse({ type: 'itemized', items: [] }).success).toBe(false);
+    expect(
+      splitInputSchema.safeParse({
+        type: 'itemized',
+        items: [{ description: '', amountMinor: 300, participantMemberIds: [uid(1)] }],
+      }).success,
+    ).toBe(false);
+    expect(
+      splitInputSchema.safeParse({
+        type: 'itemized',
+        items: [{ description: 'X', amountMinor: 0, participantMemberIds: [uid(1)] }],
+      }).success,
+    ).toBe(false);
+    expect(
+      splitInputSchema.safeParse({
+        type: 'itemized',
+        items: [{ description: 'X', amountMinor: 100, participantMemberIds: [] }],
+      }).success,
+    ).toBe(false);
+  });
+
   it('rejects fractional basis points and zero share units', () => {
     expect(
       splitInputSchema.safeParse({

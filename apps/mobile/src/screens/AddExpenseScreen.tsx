@@ -14,7 +14,15 @@ const METHODS: Array<{ key: SplitMethod; label: string }> = [
   { key: 'exact', label: 'Exact' },
   { key: 'percentage', label: 'Percent' },
   { key: 'shares', label: 'Shares' },
+  { key: 'itemized', label: 'Items' },
 ];
+
+/** Draft line item while editing an itemized split. */
+interface ItemDraft {
+  description: string;
+  amount: string;
+  participants: Set<string>;
+}
 
 function memberLabel(m: GroupMember): string {
   return m.user?.name ?? m.guestName ?? 'Member';
@@ -46,6 +54,10 @@ export function AddExpenseScreen({
   const [participants, setParticipants] = useState<Set<string>>(new Set(members.map((m) => m.id)));
   // Per-member raw input for exact (minor via major string) / percentage (%) / shares (units).
   const [values, setValues] = useState<Record<string, string>>({});
+  // Line items while the "Items" method is selected.
+  const [items, setItems] = useState<ItemDraft[]>([
+    { description: '', amount: '', participants: new Set(members.map((m) => m.id)) },
+  ]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -60,7 +72,60 @@ export function AddExpenseScreen({
 
   const setValue = (id: string, v: string): void => setValues((prev) => ({ ...prev, [id]: v }));
 
+  const updateItem = (index: number, patch: Partial<ItemDraft>): void =>
+    setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
+
+  const toggleItemParticipant = (index: number, memberId: string): void =>
+    setItems((prev) =>
+      prev.map((it, i) => {
+        if (i !== index) return it;
+        const next = new Set(it.participants);
+        if (next.has(memberId)) next.delete(memberId);
+        else next.add(memberId);
+        return { ...it, participants: next };
+      }),
+    );
+
+  const addItem = (): void =>
+    setItems((prev) => [
+      ...prev,
+      { description: '', amount: '', participants: new Set(members.map((m) => m.id)) },
+    ]);
+
+  const removeItem = (index: number): void =>
+    setItems((prev) => prev.filter((_, i) => i !== index));
+
+  /** Sum of the item amounts entered so far, in minor units (null if any is invalid). */
+  const itemsTotalMinor = (): number | null => {
+    let sum = 0;
+    for (const it of items) {
+      const minor = toMinor(it.amount);
+      if (minor === null) return null;
+      sum += minor;
+    }
+    return sum;
+  };
+
   const buildSplit = (amountMinor: number): SplitPayload | string => {
+    if (method === 'itemized') {
+      const built = [];
+      for (const it of items) {
+        if (!it.description.trim()) return 'Every item needs a description';
+        const minor = toMinor(it.amount);
+        if (minor === null || minor <= 0) return 'Every item needs a valid amount';
+        if (it.participants.size === 0) return 'Every item needs at least one participant';
+        built.push({
+          description: it.description.trim(),
+          amountMinor: minor,
+          participantMemberIds: [...it.participants],
+        });
+      }
+      const sum = built.reduce((s, i) => s + i.amountMinor, 0);
+      if (sum !== amountMinor)
+        return `Items must add up to the total (items ${(sum / 100).toFixed(2)} vs total ${(amountMinor / 100).toFixed(2)})`;
+      return { type: 'itemized', items: built };
+    }
+
     const chosen = members.filter((m) => participants.has(m.id));
     if (chosen.length === 0) return 'Select at least one participant';
 
@@ -175,27 +240,91 @@ export function AddExpenseScreen({
         ))}
       </View>
 
-      <Text style={styles.section}>Participants</Text>
-      {members.map((m) => {
-        const on = participants.has(m.id);
-        return (
-          <View key={m.id} style={styles.participantRow}>
-            <Pressable style={styles.participantToggle} onPress={() => toggle(m.id)}>
-              <Text style={styles.checkbox}>{on ? '☑' : '☐'}</Text>
-              <Text>{memberLabel(m)}</Text>
-            </Pressable>
-            {on && method !== 'equal' && (
-              <TextInput
-                style={styles.smallInput}
-                keyboardType={method === 'shares' ? 'number-pad' : 'decimal-pad'}
-                placeholder={method === 'exact' ? '0.00' : method === 'percentage' ? '%' : 'units'}
-                value={values[m.id] ?? ''}
-                onChangeText={(v) => setValue(m.id, v)}
-              />
-            )}
-          </View>
-        );
-      })}
+      {method !== 'itemized' ? (
+        <>
+          <Text style={styles.section}>Participants</Text>
+          {members.map((m) => {
+            const on = participants.has(m.id);
+            return (
+              <View key={m.id} style={styles.participantRow}>
+                <Pressable style={styles.participantToggle} onPress={() => toggle(m.id)}>
+                  <Text style={styles.checkbox}>{on ? '☑' : '☐'}</Text>
+                  <Text>{memberLabel(m)}</Text>
+                </Pressable>
+                {on && method !== 'equal' && (
+                  <TextInput
+                    style={styles.smallInput}
+                    keyboardType={method === 'shares' ? 'number-pad' : 'decimal-pad'}
+                    placeholder={
+                      method === 'exact' ? '0.00' : method === 'percentage' ? '%' : 'units'
+                    }
+                    value={values[m.id] ?? ''}
+                    onChangeText={(v) => setValue(m.id, v)}
+                  />
+                )}
+              </View>
+            );
+          })}
+        </>
+      ) : (
+        <>
+          <Text style={styles.section}>Items</Text>
+          {items.map((it, i) => (
+            <View key={i} style={styles.itemCard}>
+              <View style={styles.itemHeader}>
+                <TextInput
+                  style={[styles.input, styles.itemDescription]}
+                  placeholder={`Item ${i + 1} (e.g. Starter)`}
+                  value={it.description}
+                  onChangeText={(v) => updateItem(i, { description: v })}
+                />
+                <TextInput
+                  style={styles.smallInput}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
+                  value={it.amount}
+                  onChangeText={(v) => updateItem(i, { amount: v })}
+                />
+              </View>
+              <View style={styles.chips}>
+                {members.map((m) => (
+                  <Pressable
+                    key={m.id}
+                    style={[styles.chip, it.participants.has(m.id) && styles.chipActive]}
+                    onPress={() => toggleItemParticipant(i, m.id)}
+                  >
+                    <Text
+                      style={it.participants.has(m.id) ? styles.chipTextActive : styles.chipText}
+                    >
+                      {memberLabel(m)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              {items.length > 1 && (
+                <Pressable onPress={() => removeItem(i)}>
+                  <Text style={styles.delete}>Remove item</Text>
+                </Pressable>
+              )}
+            </View>
+          ))}
+          <Pressable style={styles.addItem} onPress={addItem}>
+            <Text style={styles.link}>+ Add item</Text>
+          </Pressable>
+          {(() => {
+            const sum = itemsTotalMinor();
+            const total = toMinor(amount);
+            if (sum === null || total === null) return null;
+            const ok = sum === total;
+            return (
+              <Text style={ok ? styles.success : styles.error}>
+                Items: {(sum / 100).toFixed(2)} / {(total / 100).toFixed(2)}
+                {ok ? ' ✓' : ' — must match the total'}
+              </Text>
+            );
+          })()}
+        </>
+      )}
 
       {error && <Text style={styles.error}>{error}</Text>}
       <Pressable
@@ -237,6 +366,18 @@ const styles = StyleSheet.create({
     width: 90,
     textAlign: 'right',
   },
+  itemCard: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    padding: 10,
+    gap: 8,
+  },
+  itemHeader: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  itemDescription: { flex: 1 },
+  addItem: { paddingVertical: 4 },
+  delete: { color: '#DC2626', fontSize: 12 },
+  success: { color: '#059669' },
   button: {
     backgroundColor: '#2563EB',
     padding: 14,

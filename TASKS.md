@@ -280,8 +280,8 @@ Run against a live API + Postgres + Redis (`docker compose up -d`, `prisma migra
 - [ ] **M5-10** OCR retry/backoff + failure handling.
 - [ ] **M5-11** Emit realtime event when OCR completes.
 - [ ] **M5-12** Mobile: pre-fill expense form from OCR result.
-- [ ] **M5-13** Itemized line-item split data model + endpoint.
-- [ ] **M5-14** Mobile: itemized split UI.
+- [x] **M5-13** Itemized line-item split data model + endpoint. *(2026-07-14: `ExpenseItem` model + `0005_itemized` migration (CHECK amount > 0); `itemized` split variant — each item splits equally among its participants, shares aggregate per member and reconcile to the total; items replaced atomically on versioned edits. Applied to live Postgres with zero drift; verified end-to-end: ₹1000 bill → starter shared / biryani solo / dessert solo → shares 350/650, non-reconciling items → 400, balances correct.)*
+- [x] **M5-14** Mobile: itemized split UI. *("Items" split method in AddExpenseScreen: per-item description/amount/participant chips, add/remove rows, live items-vs-total reconciliation indicator.)*
 - [—] **M5-15** ~~Currency-sync job (fetch FX rates → cache).~~ *(deferred post-v1 — India/INR only)*
 - [—] **M5-16** ~~Store expense currency + convert for display.~~ *(deferred post-v1; currency column already stored)*
 - [—] **M5-17** ~~Per-member display-currency preference.~~ *(deferred post-v1)*

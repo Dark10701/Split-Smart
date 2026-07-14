@@ -18,7 +18,9 @@ import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 
 /** An expense with its splits and payer, as returned to clients. */
-export type ExpenseWithSplits = Prisma.ExpenseGetPayload<{ include: { splits: true } }>;
+export type ExpenseWithSplits = Prisma.ExpenseGetPayload<{
+  include: { splits: true; items: true };
+}>;
 
 @Injectable()
 export class ExpensesService {
@@ -82,9 +84,26 @@ export class ExpensesService {
   }
 
   private splitMemberIds(split: SplitInput): string[] {
-    return split.type === 'equal'
-      ? split.participantMemberIds
-      : split.shares.map((s) => s.memberId);
+    switch (split.type) {
+      case 'equal':
+        return split.participantMemberIds;
+      case 'itemized':
+        return split.items.flatMap((i) => i.participantMemberIds);
+      default:
+        return split.shares.map((s) => s.memberId);
+    }
+  }
+
+  /** Line items to persist alongside the splits (itemized expenses only). */
+  private itemsToCreate(
+    split: SplitInput,
+  ): Array<{ description: string; amountMinor: number; participantMemberIds: string[] }> {
+    if (split.type !== 'itemized') return [];
+    return split.items.map((i) => ({
+      description: i.description,
+      amountMinor: i.amountMinor,
+      participantMemberIds: i.participantMemberIds,
+    }));
   }
 
   private computeOrThrow(
@@ -123,8 +142,9 @@ export class ExpensesService {
           splits: {
             create: shares.map((s) => ({ memberId: s.memberId, shareMinor: s.shareMinor })),
           },
+          items: { create: this.itemsToCreate(input.split) },
         },
-        include: { splits: true },
+        include: { splits: true, items: true },
       });
       await this.writeActivity(tx, groupId, actorUserId, created.id, 'created', {
         description: created.description,
@@ -146,7 +166,7 @@ export class ExpensesService {
   ): Promise<{ items: ExpenseWithSplits[]; nextCursor: string | null }> {
     const items = await this.prisma.expense.findMany({
       where: { groupId, deletedAt: null },
-      include: { splits: true },
+      include: { splits: true, items: true },
       orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
       take: query.limit + 1,
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
@@ -160,7 +180,7 @@ export class ExpensesService {
   async getById(groupId: string, expenseId: string): Promise<ExpenseWithSplits> {
     const expense = await this.prisma.expense.findFirst({
       where: { id: expenseId, groupId, deletedAt: null },
-      include: { splits: true },
+      include: { splits: true, items: true },
     });
     if (!expense) throw new NotFoundException('Expense not found');
     return expense;
@@ -194,8 +214,11 @@ export class ExpensesService {
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
-      if (shares) {
+      if (shares && input.split) {
+        // Replacing the split replaces the line items too (empty for
+        // non-itemized splits, so switching away from itemized clears them).
         await tx.expenseSplit.deleteMany({ where: { expenseId } });
+        await tx.expenseItem.deleteMany({ where: { expenseId } });
       }
       const result = await tx.expense.update({
         where: { id: expenseId },
@@ -208,15 +231,16 @@ export class ExpensesService {
           occurredAt: input.occurredAt ? new Date(input.occurredAt) : undefined,
           splitType: input.split ? input.split.type : undefined,
           version: { increment: 1 },
-          ...(shares
+          ...(shares && input.split
             ? {
                 splits: {
                   create: shares.map((s) => ({ memberId: s.memberId, shareMinor: s.shareMinor })),
                 },
+                items: { create: this.itemsToCreate(input.split) },
               }
             : {}),
         },
-        include: { splits: true },
+        include: { splits: true, items: true },
       });
       await this.writeActivity(tx, groupId, actorUserId, expenseId, 'updated', {
         fromVersion: current.version,

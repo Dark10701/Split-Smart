@@ -138,10 +138,25 @@ model Expense {
   updatedAt     DateTime    @updatedAt
 
   splits   ExpenseSplit[]
+  items    ExpenseItem[]
   comments Comment[]
 
   @@index([groupId, occurredAt])
   @@index([payerMemberId])
+}
+
+/// A line item of an itemized expense (M5-13). Each item is split equally
+/// among its participants; per-member shares are the aggregate across items
+/// and always reconcile to the expense total.
+model ExpenseItem {
+  id                   String   @id @default(uuid())
+  expenseId            String
+  expense              Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  description          String
+  amountMinor          Int
+  participantMemberIds String[]
+
+  @@index([expenseId])
 }
 
 /// One participant's share of an expense. Shares always sum to the expense
