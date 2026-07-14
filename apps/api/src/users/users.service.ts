@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import type { User } from '@prisma/client';
-import type { AuthClaims, UpdateMeInput } from '@splitsmart/validation';
+import type { NotificationPref, User } from '@prisma/client';
+import type {
+  AuthClaims,
+  UpdateMeInput,
+  UpdateNotificationPrefsInput,
+} from '@splitsmart/validation';
 import { PrismaService } from '../database/prisma.service';
 import { claimsToUserUpsert } from '../auth/claims';
 import { defaultNotificationPrefs } from './notification-defaults';
@@ -51,6 +55,36 @@ export class UsersService {
 
   async update(userId: string, input: UpdateMeInput): Promise<User> {
     return this.prisma.user.update({ where: { id: userId }, data: input });
+  }
+
+  /** List a user's per-channel/type notification preferences (M6-14). */
+  async listNotificationPrefs(userId: string): Promise<NotificationPref[]> {
+    return this.prisma.notificationPref.findMany({
+      where: { userId },
+      orderBy: [{ type: 'asc' }, { channel: 'asc' }],
+    });
+  }
+
+  /**
+   * Apply a sparse set of notification-pref toggles (M6-14). Each (channel,
+   * type) pair is upserted against the unique index, so a pref missing at
+   * signup (e.g. added in a later release) is created rather than silently
+   * dropped. Returns the full, updated preference list.
+   */
+  async updateNotificationPrefs(
+    userId: string,
+    input: UpdateNotificationPrefsInput,
+  ): Promise<NotificationPref[]> {
+    await this.prisma.$transaction(
+      input.prefs.map((p) =>
+        this.prisma.notificationPref.upsert({
+          where: { userId_channel_type: { userId, channel: p.channel, type: p.type } },
+          create: { userId, channel: p.channel, type: p.type, enabled: p.enabled },
+          update: { enabled: p.enabled },
+        }),
+      ),
+    );
+    return this.listNotificationPrefs(userId);
   }
 
   /**

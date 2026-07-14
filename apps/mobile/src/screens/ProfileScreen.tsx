@@ -8,7 +8,13 @@ import { api, ApiError, type Me } from '../api';
  * (maya@okhdfcbank) or a pasted `upi://` link / UPI QR contents — the server
  * extracts and stores the normalized VPA either way.
  */
-export function ProfileScreen({ onBack }: { onBack: () => void }) {
+export function ProfileScreen({
+  onBack,
+  onOpenNotifications,
+}: {
+  onBack: () => void;
+  onOpenNotifications: () => void;
+}) {
   const { token } = useAuth();
   const [me, setMe] = useState<Me | null>(null);
   const [name, setName] = useState('');
@@ -98,6 +104,10 @@ export function ProfileScreen({ onBack }: { onBack: () => void }) {
       >
         <Text style={styles.buttonText}>{saving ? 'Saving…' : 'Save'}</Text>
       </Pressable>
+
+      <Pressable style={styles.linkRow} onPress={onOpenNotifications}>
+        <Text style={styles.link}>Notification settings →</Text>
+      </Pressable>
     </View>
   );
 }
@@ -121,4 +131,5 @@ const styles = StyleSheet.create({
   muted: { color: '#6B7280' },
   error: { color: '#DC2626' },
   success: { color: '#059669' },
+  linkRow: { marginTop: 18, alignItems: 'center' },
 });

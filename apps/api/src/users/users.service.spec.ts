@@ -65,6 +65,28 @@ describe('UsersService GDPR (M6-17/18)', () => {
     });
   });
 
+  it('updateNotificationPrefs upserts each toggle against the composite key', async () => {
+    const upsert = jest.fn().mockReturnValue('op');
+    const prisma = {
+      notificationPref: {
+        upsert,
+        findMany: jest.fn().mockResolvedValue([{ id: 'np1', enabled: false }]),
+      },
+      $transaction: jest.fn().mockResolvedValue([]),
+    };
+    const svc = new UsersService(prisma as unknown as PrismaService);
+    const result = await svc.updateNotificationPrefs('u1', {
+      prefs: [{ channel: 'push', type: 'expense_added', enabled: false }],
+    });
+    expect(upsert).toHaveBeenCalledWith({
+      where: { userId_channel_type: { userId: 'u1', channel: 'push', type: 'expense_added' } },
+      create: { userId: 'u1', channel: 'push', type: 'expense_added', enabled: false },
+      update: { enabled: false },
+    });
+    expect(prisma.$transaction).toHaveBeenCalledWith(['op']);
+    expect(result).toHaveLength(1);
+  });
+
   it('deleteAccount anonymizes PII, drops prefs, and soft-removes memberships', async () => {
     const prefDelete = jest.fn().mockResolvedValue({ count: 3 });
     const memberUpdate = jest.fn().mockResolvedValue({ count: 2 });

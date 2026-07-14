@@ -11,7 +11,7 @@ describe('AuditService', () => {
       targetId: 'u1',
       metadata: { anonymizedMemberships: 2 },
     });
-    const line = spy.mock.calls[0][0] as string;
+    const line = spy.mock.calls[0]?.[0] as string;
     const parsed = JSON.parse(line);
     expect(parsed.audit).toBe(true);
     expect(parsed.action).toBe('account.deleted');

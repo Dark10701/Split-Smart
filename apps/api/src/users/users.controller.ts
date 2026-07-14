@@ -7,8 +7,12 @@ import {
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
-import type { User } from '@prisma/client';
-import { updateMeSchema, type AuthClaims } from '@splitsmart/validation';
+import type { NotificationPref, User } from '@prisma/client';
+import {
+  updateMeSchema,
+  updateNotificationPrefsSchema,
+  type AuthClaims,
+} from '@splitsmart/validation';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
@@ -36,6 +40,23 @@ export class UsersController {
     }
     const user = await this.users.resolveFromClaims(claims);
     return this.users.update(user.id, parsed.data);
+  }
+
+  @Get('notification-prefs')
+  async notificationPrefs(@CurrentUser() claims: AuthClaims): Promise<NotificationPref[]> {
+    const user = await this.users.resolveFromClaims(claims);
+    return this.users.listNotificationPrefs(user.id);
+  }
+
+  @Patch('notification-prefs')
+  async updateNotificationPrefs(
+    @CurrentUser() claims: AuthClaims,
+    @Body() body: unknown,
+  ): Promise<NotificationPref[]> {
+    const parsed = updateNotificationPrefsSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const user = await this.users.resolveFromClaims(claims);
+    return this.users.updateNotificationPrefs(user.id, parsed.data);
   }
 
   /** GDPR/DPDP data export (M6-17). Rate-limited — it's an expensive fan-out. */

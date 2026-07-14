@@ -6,19 +6,30 @@ import { LoginScreen } from './src/screens/LoginScreen';
 import { GroupsScreen } from './src/screens/GroupsScreen';
 import { GroupDetailScreen } from './src/screens/GroupDetailScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
+import { NotificationPrefsScreen } from './src/screens/NotificationPrefsScreen';
 
 function Root() {
   const { token, ready } = useAuth();
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
-  const [showProfile, setShowProfile] = useState(false);
+  const [screen, setScreen] = useState<'groups' | 'profile' | 'notifications'>('groups');
 
   if (!ready) return <ActivityIndicator style={styles.center} />;
   if (!token) return <LoginScreen />;
-  if (showProfile) return <ProfileScreen onBack={() => setShowProfile(false)} />;
+  if (screen === 'notifications') {
+    return <NotificationPrefsScreen onBack={() => setScreen('profile')} />;
+  }
+  if (screen === 'profile') {
+    return (
+      <ProfileScreen
+        onBack={() => setScreen('groups')}
+        onOpenNotifications={() => setScreen('notifications')}
+      />
+    );
+  }
   if (openGroupId) {
     return <GroupDetailScreen groupId={openGroupId} onBack={() => setOpenGroupId(null)} />;
   }
-  return <GroupsScreen onOpen={setOpenGroupId} onOpenProfile={() => setShowProfile(true)} />;
+  return <GroupsScreen onOpen={setOpenGroupId} onOpenProfile={() => setScreen('profile')} />;
 }
 
 export default function App() {
