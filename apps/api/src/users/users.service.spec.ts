@@ -32,3 +32,60 @@ describe('UsersService', () => {
     expect(arg.data.notificationPrefs.create).toHaveLength(defaultNotificationPrefs('').length);
   });
 });
+
+describe('UsersService GDPR (M6-17/18)', () => {
+  it('exportData assembles the full bundle for the user', async () => {
+    const prisma = {
+      user: {
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          id: 'u1',
+          email: 'maya@example.in',
+          name: 'Maya',
+          defaultCurrency: 'INR',
+          upiId: 'maya@okhdfcbank',
+          createdAt: new Date('2026-01-01'),
+          notificationPrefs: [{ id: 'p1' }],
+        }),
+      },
+      groupMember: { findMany: jest.fn().mockResolvedValue([{ id: 'm1' }, { id: 'm2' }]) },
+      expense: { findMany: jest.fn().mockResolvedValue([{ id: 'e1' }]) },
+      expenseSplit: { findMany: jest.fn().mockResolvedValue([{ id: 's1' }]) },
+      payment: { findMany: jest.fn().mockResolvedValue([{ id: 'pay1' }]) },
+      comment: { findMany: jest.fn().mockResolvedValue([{ id: 'c1' }]) },
+      activityLog: { findMany: jest.fn().mockResolvedValue([{ id: 'a1' }]) },
+    };
+    const svc = new UsersService(prisma as unknown as PrismaService);
+    const bundle = await svc.exportData('u1');
+    expect(bundle.profile.upiId).toBe('maya@okhdfcbank');
+    expect(bundle.memberships).toHaveLength(2);
+    expect(bundle.payments).toHaveLength(1);
+    // Splits are scoped to the user's own member ids.
+    expect(prisma.expenseSplit.findMany).toHaveBeenCalledWith({
+      where: { memberId: { in: ['m1', 'm2'] } },
+    });
+  });
+
+  it('deleteAccount anonymizes PII, drops prefs, and soft-removes memberships', async () => {
+    const prefDelete = jest.fn().mockResolvedValue({ count: 3 });
+    const memberUpdate = jest.fn().mockResolvedValue({ count: 2 });
+    const userUpdate = jest.fn().mockResolvedValue({});
+    const tx = {
+      notificationPref: { deleteMany: prefDelete },
+      groupMember: { updateMany: memberUpdate },
+      user: { update: userUpdate },
+    };
+    const svc = new UsersService({
+      $transaction: (fn: (t: unknown) => unknown) => fn(tx),
+    } as unknown as PrismaService);
+
+    const result = await svc.deleteAccount('u1');
+    expect(result).toEqual({ anonymizedMemberships: 2 });
+    expect(prefDelete).toHaveBeenCalledWith({ where: { userId: 'u1' } });
+    expect(memberUpdate.mock.calls[0][0].data.removedAt).toBeInstanceOf(Date);
+    const data = userUpdate.mock.calls[0][0].data;
+    expect(data.name).toBe('Deleted user');
+    expect(data.email).toBe('deleted+u1@deleted.invalid');
+    expect(data.authSubject).toBe('deleted:u1');
+    expect(data.upiId).toBeNull();
+  });
+});

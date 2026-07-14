@@ -15,6 +15,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { FeedModule } from './feed/feed.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RateLimitModule } from './common/rate-limit/rate-limit.module';
+import { AuditModule } from './common/audit/audit.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { RateLimitModule } from './common/rate-limit/rate-limit.module';
     DatabaseModule,
     RedisModule,
     RateLimitModule,
+    AuditModule,
     RealtimeModule,
     NotificationsModule,
     AuthModule,
