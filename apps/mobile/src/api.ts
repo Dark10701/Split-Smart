@@ -10,6 +10,20 @@ export interface Me {
   defaultCurrency: string;
   upiId: string | null;
 }
+
+export type NotificationChannel = 'push' | 'email' | 'sms' | 'in_app';
+export type NotificationType = 'expense_added' | 'settle_up' | 'payment_confirmed' | 'reminder';
+export interface NotificationPref {
+  id: string;
+  channel: NotificationChannel;
+  type: NotificationType;
+  enabled: boolean;
+}
+export interface NotificationPrefToggle {
+  channel: NotificationChannel;
+  type: NotificationType;
+  enabled: boolean;
+}
 export interface Group {
   id: string;
   name: string;
@@ -154,6 +168,16 @@ export const api = {
       headers: headers(token),
       body: JSON.stringify(body),
     }).then(unwrap<Me>),
+  getNotificationPrefs: (token: string) =>
+    fetch(`${API_URL}/me/notification-prefs`, { headers: headers(token) }).then(
+      unwrap<NotificationPref[]>,
+    ),
+  updateNotificationPrefs: (token: string, prefs: NotificationPrefToggle[]) =>
+    fetch(`${API_URL}/me/notification-prefs`, {
+      method: 'PATCH',
+      headers: headers(token),
+      body: JSON.stringify({ prefs }),
+    }).then(unwrap<NotificationPref[]>),
   listGroups: (token: string) =>
     fetch(`${API_URL}/groups`, { headers: headers(token) }).then(unwrap<Group[]>),
   createGroup: (token: string, name: string, defaultCurrency?: string) =>

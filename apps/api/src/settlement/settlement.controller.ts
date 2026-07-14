@@ -4,6 +4,7 @@ import { createSettlementSchema } from '@splitsmart/validation';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GroupMembershipGuard } from '../groups/group-membership.guard';
 import { CurrentMembership, type Membership } from '../groups/membership.decorator';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { SettlementService } from './settlement.service';
 
 type Validatable<T> = {
@@ -23,7 +24,9 @@ function validate<T>(schema: Validatable<T>, body: unknown): T {
 export class SettlementController {
   constructor(private readonly settlement: SettlementService) {}
 
+  // Financial write — tighter budget than the global default.
   @Post()
+  @RateLimit(20, 60)
   async record(
     @Param('id') groupId: string,
     @CurrentMembership() membership: Membership,

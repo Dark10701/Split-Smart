@@ -16,6 +16,7 @@ import {
   createPaymentIntentSchema,
   normalizeUpiInput,
   upiIdInputSchema,
+  updateNotificationPrefsSchema,
 } from './index';
 
 const uid = (n: number): string => `00000000-0000-4000-8000-00000000000${n}`;
@@ -280,5 +281,29 @@ describe('UPI validation (M5)', () => {
     if (set.success) expect(set.data.upiId).toBe('maya@okhdfcbank');
     expect(updateMeSchema.safeParse({ upiId: null }).success).toBe(true);
     expect(updateMeSchema.safeParse({ upiId: 'nope' }).success).toBe(false);
+  });
+});
+
+describe('notification prefs validation (M6-14)', () => {
+  it('accepts a sparse list of valid toggles', () => {
+    expect(
+      updateNotificationPrefsSchema.safeParse({
+        prefs: [{ channel: 'push', type: 'expense_added', enabled: false }],
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects empty, oversized, or invalid enum values', () => {
+    expect(updateNotificationPrefsSchema.safeParse({ prefs: [] }).success).toBe(false);
+    expect(
+      updateNotificationPrefsSchema.safeParse({
+        prefs: [{ channel: 'carrier-pigeon', type: 'expense_added', enabled: true }],
+      }).success,
+    ).toBe(false);
+    expect(
+      updateNotificationPrefsSchema.safeParse({
+        prefs: [{ channel: 'push', type: 'nope', enabled: true }],
+      }).success,
+    ).toBe(false);
   });
 });

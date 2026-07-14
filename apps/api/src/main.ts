@@ -2,11 +2,25 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import * as express from 'express';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+
+  // Baseline security headers (M6). The API serves JSON only and never renders
+  // HTML, so a locked-down CSP plus the standard hardening headers are enough
+  // without pulling in a helmet dependency.
+  app.use((_req: Request, res: Response, next: () => void) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+    res.removeHeader('X-Powered-By');
+    next();
+  });
+
   // Capture the raw request body so provider webhook signatures (M4) can be
   // verified against the exact bytes the provider signed.
   app.use(

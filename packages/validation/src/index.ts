@@ -75,6 +75,32 @@ export const upiIdInputSchema = z
     return vpa;
   });
 
+export const notificationChannelSchema = z.enum(['push', 'email', 'sms', 'in_app']);
+export const notificationTypeSchema = z.enum([
+  'expense_added',
+  'settle_up',
+  'payment_confirmed',
+  'reminder',
+]);
+
+/**
+ * PATCH /me/notification-prefs body (M6-14). A sparse list of (channel, type)
+ * toggles to apply; anything omitted is left unchanged.
+ */
+export const updateNotificationPrefsSchema = z.object({
+  prefs: z
+    .array(
+      z.object({
+        channel: notificationChannelSchema,
+        type: notificationTypeSchema,
+        enabled: z.boolean(),
+      }),
+    )
+    .min(1)
+    .max(16),
+});
+export type UpdateNotificationPrefsInput = z.infer<typeof updateNotificationPrefsSchema>;
+
 /** PATCH /me body. All fields optional; at least one must be present. */
 export const updateMeSchema = z
   .object({
