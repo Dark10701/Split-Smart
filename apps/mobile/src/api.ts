@@ -8,6 +8,7 @@ export interface Me {
   email: string;
   name: string;
   defaultCurrency: string;
+  upiId: string | null;
 }
 export interface Group {
   id: string;
@@ -20,6 +21,8 @@ export interface GroupMember {
   userId: string | null;
   guestName: string | null;
   role: string;
+  /** Display name + UPI VPA of the linked account (null for guests). */
+  user: { name: string; upiId: string | null } | null;
 }
 export interface GroupDetail extends Group {
   members: GroupMember[];
@@ -131,6 +134,15 @@ async function unwrap<T>(res: Response): Promise<T> {
 
 export const api = {
   me: (token: string) => fetch(`${API_URL}/me`, { headers: headers(token) }).then(unwrap<Me>),
+  updateMe: (
+    token: string,
+    body: { name?: string; defaultCurrency?: string; upiId?: string | null },
+  ) =>
+    fetch(`${API_URL}/me`, {
+      method: 'PATCH',
+      headers: headers(token),
+      body: JSON.stringify(body),
+    }).then(unwrap<Me>),
   listGroups: (token: string) =>
     fetch(`${API_URL}/groups`, { headers: headers(token) }).then(unwrap<Group[]>),
   createGroup: (token: string, name: string, defaultCurrency?: string) =>
@@ -182,7 +194,7 @@ export const api = {
       toMemberId: string;
       amountMinor: number;
       currency: string;
-      method?: 'cash' | 'offline';
+      method?: 'cash' | 'offline' | 'upi';
       idempotencyKey: string;
     },
   ) =>

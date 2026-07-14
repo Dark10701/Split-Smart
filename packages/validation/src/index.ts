@@ -22,13 +22,67 @@ export const authClaimsSchema = z.object({
 });
 export type AuthClaims = z.infer<typeof authClaimsSchema>;
 
+// ---------------------------------------------------------------------------
+// UPI (M5-21). A VPA (virtual payment address) looks like `maya@okhdfcbank`.
+// Users may paste a `upi://pay?...` link or their UPI QR's contents instead of
+// typing the VPA; `normalizeUpiInput` extracts and validates the VPA either way.
+// ---------------------------------------------------------------------------
+
+const VPA_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._-]{1,255}@[a-zA-Z][a-zA-Z0-9]{1,63}$/;
+
+/** A bare UPI VPA, e.g. `maya@okhdfcbank`. */
+export const upiVpaSchema = z.string().regex(VPA_REGEX, 'Must be a valid UPI ID like name@bank');
+
+/**
+ * Extract the VPA from user input: a bare VPA, or a `upi://pay` /
+ * `https://upi/...`-style link (as found in UPI QR codes), whose `pa`
+ * parameter is the payee VPA. Returns null when no valid VPA is found.
+ */
+export function normalizeUpiInput(raw: string): string | null {
+  const input = raw.trim();
+  if (VPA_REGEX.test(input)) return input.toLowerCase();
+  // upi://pay?pa=<vpa>&pn=... — tolerate any scheme/host, just read `pa`.
+  const paMatch = /[?&]pa=([^&\s]+)/i.exec(input);
+  if (paMatch?.[1]) {
+    try {
+      const candidate = decodeURIComponent(paMatch[1]).trim();
+      if (VPA_REGEX.test(candidate)) return candidate.toLowerCase();
+    } catch {
+      // Malformed percent-escape (e.g. `pa=maya%ZZ@ybl`) — not a valid link.
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * PATCH /me `upiId` field: accepts a VPA or a pasted UPI link/QR contents and
+ * normalizes to the bare lowercase VPA. `null` clears the stored UPI ID.
+ */
+export const upiIdInputSchema = z
+  .string()
+  .min(3)
+  .max(500)
+  .transform((raw, ctx) => {
+    const vpa = normalizeUpiInput(raw);
+    if (!vpa) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Not a valid UPI ID or UPI payment link',
+      });
+      return z.NEVER;
+    }
+    return vpa;
+  });
+
 /** PATCH /me body. All fields optional; at least one must be present. */
 export const updateMeSchema = z
   .object({
     name: z.string().min(1).max(80).optional(),
     defaultCurrency: currencyCodeSchema.optional(),
+    upiId: upiIdInputSchema.nullable().optional(),
   })
-  .refine((v) => v.name !== undefined || v.defaultCurrency !== undefined, {
+  .refine((v) => v.name !== undefined || v.defaultCurrency !== undefined || v.upiId !== undefined, {
     message: 'Provide at least one field to update',
   });
 export type UpdateMeInput = z.infer<typeof updateMeSchema>;
@@ -152,7 +206,7 @@ export type ListExpensesQuery = z.infer<typeof listExpensesQuerySchema>;
 // Settlements & comments (M3)
 // ---------------------------------------------------------------------------
 
-export const paymentMethodSchema = z.enum(['cash', 'offline']);
+export const paymentMethodSchema = z.enum(['cash', 'offline', 'upi']);
 export type PaymentMethodInput = z.infer<typeof paymentMethodSchema>;
 
 /**

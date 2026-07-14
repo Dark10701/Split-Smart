@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Linking } from 'react-native';
+import { buildUpiPayUri } from '@splitsmart/types';
 import { useAuth } from '../auth';
 import { api, type GroupDetail, type GroupMember, type Transfer } from '../api';
 import { formatMoney } from '../money';
 
 function memberLabel(members: GroupMember[], id: string): string {
   const m = members.find((x) => x.id === id);
-  return m ? (m.guestName ?? (m.userId ? 'Member' : 'Guest')) : 'Unknown';
+  return m ? (m.user?.name ?? m.guestName ?? 'Member') : 'Unknown';
 }
 
 /** Parse a decimal major-unit string into integer minor units. */
@@ -39,9 +40,35 @@ export function SettleUpScreen({
   const [from, setFrom] = useState(suggested?.fromMemberId ?? members[0]?.id ?? '');
   const [to, setTo] = useState(suggested?.toMemberId ?? members[1]?.id ?? '');
   const [amount, setAmount] = useState(suggested ? (suggested.amountMinor / 100).toFixed(2) : '');
-  const [method, setMethod] = useState<'cash' | 'offline'>('cash');
+  const [method, setMethod] = useState<'cash' | 'offline' | 'upi'>('cash');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const payee = members.find((m) => m.id === to);
+  // UPI transfers are INR-only: the deep link hardcodes cu=INR and treats the
+  // minor units as paise, so hide the handoff for historical non-INR groups.
+  const settleCurrency = suggested?.currency ?? group.defaultCurrency;
+  const payeeVpa = settleCurrency === 'INR' ? (payee?.user?.upiId ?? null) : null;
+
+  /** Open the payer's UPI app pre-filled with the payee's VPA and the amount (M5-25). */
+  const payViaUpi = async (): Promise<void> => {
+    setError(null);
+    if (!payeeVpa || !payee) return;
+    const amountMinor = toMinor(amount);
+    if (amountMinor === null || amountMinor <= 0) return setError('Enter a valid amount first');
+    const uri = buildUpiPayUri({
+      payeeVpa,
+      payeeName: memberLabel(members, payee.id),
+      amountPaise: amountMinor,
+      note: `SplitSmart · ${group.name}`,
+    });
+    setMethod('upi');
+    try {
+      await Linking.openURL(uri);
+    } catch {
+      setError('No UPI app could be opened on this device');
+    }
+  };
 
   const submit = async (): Promise<void> => {
     setError(null);
@@ -116,18 +143,34 @@ export function SettleUpScreen({
 
       <Text style={styles.section}>Method</Text>
       <View style={styles.chips}>
-        {(['cash', 'offline'] as const).map((mth) => (
+        {(['cash', 'upi', 'offline'] as const).map((mth) => (
           <Pressable
             key={mth}
             style={[styles.chip, method === mth && styles.chipActive]}
             onPress={() => setMethod(mth)}
           >
             <Text style={method === mth ? styles.chipTextActive : styles.chipText}>
-              {mth === 'cash' ? 'Cash' : 'Bank / other'}
+              {mth === 'cash' ? 'Cash' : mth === 'upi' ? 'UPI' : 'Bank / other'}
             </Text>
           </Pressable>
         ))}
       </View>
+
+      {payeeVpa ? (
+        <Pressable style={styles.upiButton} onPress={() => void payViaUpi()}>
+          <Text style={styles.upiButtonText}>
+            Pay {memberLabel(members, to)} via UPI ({payeeVpa})
+          </Text>
+        </Pressable>
+      ) : (
+        payee &&
+        settleCurrency === 'INR' && (
+          <Text style={styles.muted}>
+            {memberLabel(members, to)} hasn&apos;t added a UPI ID yet — settle in cash or ask them
+            to add one in their profile.
+          </Text>
+        )
+      )}
 
       {suggested && (
         <Text style={styles.muted}>
@@ -174,6 +217,16 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: '#fff', fontWeight: '600' },
+  upiButton: {
+    borderWidth: 1,
+    borderColor: '#059669',
+    backgroundColor: '#ECFDF5',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  upiButtonText: { color: '#059669', fontWeight: '600' },
   muted: { color: '#6B7280' },
   error: { color: '#DC2626' },
 });

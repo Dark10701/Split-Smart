@@ -241,22 +241,32 @@ Run against a live API + Postgres + Redis (`docker compose up -d`, `prisma migra
 > M4-08. The real Stripe adapter (`createIntent`/`parseWebhook` via the Stripe
 > SDK + webhook secret) slots into the provider seam.
 
-- [ ] **M4-01** Stripe account + API keys in secrets management. *(external: provision keys; code reads them when present)*
+> **Scope change (2026-07-14):** India-first pivot — UPI is the v1 settlement
+> rail (see M5-20..26). The remaining Stripe-client tickets below (M4-01/04/09,
+> client half of M4-08) are **deferred post-v1**; the shipped orchestration and
+> provider seam stay as the future card rail.
+
+- [—] **M4-01** ~~Stripe account + API keys in secrets management.~~ *(deferred post-v1)*
 - [x] **M4-02** Payment worker skeleton (consume payment jobs). *(routes `reconcile_stale` sweeps)*
 - [x] **M4-03** Create payment intent endpoint (idempotent). *(`POST /groups/:id/payments/intent`; idempotent on key)*
-- [ ] **M4-04** Mobile: Stripe SDK integration + payment sheet. *(external: needs the Stripe RN SDK + publishable key; server contract ready)*
+- [—] **M4-04** ~~Mobile: Stripe SDK integration + payment sheet.~~ *(deferred post-v1; server contract ready)*
 - [x] **M4-05** Handle Stripe webhooks (payment succeeded/failed). *(`POST /payments/webhook`; raw-body signature verify seam)*
 - [x] **M4-06** Update payment status + balances on webhook. *(exactly-once transition + balance recompute + realtime)*
 - [x] **M4-07** Idempotency handling to prevent double-charge (test). *(idempotency + concurrent-webhook guard, covered by tests)*
 - [~] **M4-08** Payment failure UX + retry path. *(server marks failed + allows a fresh intent with a new key; mobile UX pairs with M4-04)*
-- [ ] **M4-09** Mobile: payment confirmation screen + receipt. *(external: pairs with the Stripe SDK payment sheet)*
+- [—] **M4-09** ~~Mobile: payment confirmation screen + receipt.~~ *(deferred post-v1; pairs with the Stripe payment sheet)*
 - [x] **M4-10** Notification: payment confirmation (push + email). *(payee notified on completion via the M3 dispatch path)*
 - [x] **M4-11** Reconciliation job: detect stuck/mismatched payments. *(`reconcileStale` polls the provider for stale pending intents)*
 - [x] **M4-12** Tests: payment lifecycle + webhook handling. *(11 tests: intent idempotency, webhook state machine, reconciliation)*
 
 ---
 
-## M5 — Receipts, OCR & Multi-Currency
+## M5 — Receipts, OCR & UPI Settle-Up
+
+> **Scope change (2026-07-14):** India-first pivot. Multi-currency/FX tickets
+> (M5-15..18) are **deferred post-v1** — do not work them. UPI profile +
+> settle-up tickets (M5-20..26) replace them. INR is the only v1 currency;
+> defaults flipped from USD to INR.
 
 - [ ] **M5-01** Provision S3 bucket (private) + IAM policy via Terraform.
 - [ ] **M5-02** Create `receipts` table + migration.
@@ -272,11 +282,23 @@ Run against a live API + Postgres + Redis (`docker compose up -d`, `prisma migra
 - [ ] **M5-12** Mobile: pre-fill expense form from OCR result.
 - [ ] **M5-13** Itemized line-item split data model + endpoint.
 - [ ] **M5-14** Mobile: itemized split UI.
-- [ ] **M5-15** Currency-sync job (fetch FX rates → cache).
-- [ ] **M5-16** Store expense currency + convert for display.
-- [ ] **M5-17** Per-member display-currency preference.
-- [ ] **M5-18** Mobile: currency selector + converted balances display.
-- [ ] **M5-19** Tests: OCR pipeline states + multi-currency balances.
+- [—] **M5-15** ~~Currency-sync job (fetch FX rates → cache).~~ *(deferred post-v1 — India/INR only)*
+- [—] **M5-16** ~~Store expense currency + convert for display.~~ *(deferred post-v1; currency column already stored)*
+- [—] **M5-17** ~~Per-member display-currency preference.~~ *(deferred post-v1)*
+- [—] **M5-18** ~~Mobile: currency selector + converted balances display.~~ *(deferred post-v1)*
+- [ ] **M5-19** Tests: OCR pipeline states.
+- [x] **M5-20** Add `upiId` to the user model + migration; INR defaults (user/group `defaultCurrency`). *(`0004_upi_inr`; VPA shape CHECK; existing rows untouched)*
+- [x] **M5-21** Validation: UPI VPA schema + normalizer (accepts a raw VPA or a pasted `upi://` link / UPI QR contents, extracts the VPA). *(`normalizeUpiInput` + `upiIdInputSchema`, lowercased)*
+- [x] **M5-22** `PATCH /me`: set/clear `upiId`; expose members' UPI availability in group detail. *(group detail includes member `user.name`/`user.upiId` only — never email)*
+- [x] **M5-23** Pure helper: build a `upi://pay` deep link from payee VPA + name + amount (paise) + note (unit-tested). *(`buildUpiPayUri` + `formatPaise` Indian grouping in `packages/types`)*
+- [x] **M5-24** Mobile: profile screen — add/edit UPI ID (paste link or type VPA). *(`ProfileScreen`, reachable from Groups header)*
+- [x] **M5-25** Mobile: "Pay via UPI" on settle-up — open the UPI app pre-filled, then record the settlement (method `upi`). *(deep link via `Linking.openURL`; web shows the payee VPA per settlement row)*
+- [x] **M5-26** Tests: VPA validation/normalization + deep-link builder + settlement method. *(16 new tests: 10 in `packages/types`, 6 in validation)*
+
+> **UPI slice verified (2026-07-14):** whole-workspace typecheck/lint/build
+> (10/10 each); tests total **113** (API 73, validation 26, types 10, worker 4);
+> `prisma validate` passes and the client regenerated. Live-DB run of
+> `0004_upi_inr` pending (no Docker here), same as 0002/0003.
 
 ---
 

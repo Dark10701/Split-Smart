@@ -18,12 +18,14 @@ model HealthCheck {
 }
 
 /// An authenticated person. Linked to the OIDC provider via `authSubject`.
+/// `upiId` is the validated UPI VPA (e.g. maya@okhdfcbank) used for settle-up.
 model User {
   id              String   @id @default(uuid())
   authSubject     String   @unique // OIDC `sub` claim
   email           String   @unique
   name            String
-  defaultCurrency String   @default("USD")
+  defaultCurrency String   @default("INR")
+  upiId           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -70,7 +72,7 @@ enum GroupRole {
 model Group {
   id              String   @id @default(uuid())
   name            String
-  defaultCurrency String   @default("USD")
+  defaultCurrency String   @default("INR")
   createdById     String
   createdBy       User     @relation("GroupsCreated", fields: [createdById], references: [id])
   createdAt       DateTime @default(now())
@@ -182,6 +184,7 @@ model ActivityLog {
 enum PaymentMethod {
   cash
   offline
+  upi
   stripe
 }
 

@@ -1,8 +1,13 @@
 # SplitSmart — Roadmap
 
-**Version:** 1.0
-**Last updated:** June 28, 2026
+**Version:** 1.1
+**Last updated:** July 14, 2026
 **Companion docs:** PRD.md, ARCHITECTURE.md
+
+> **v1.1 (2026-07-14):** India-first pivot — INR only, UPI-first settlement.
+> M4's card/Stripe client work is deferred post-v1 (its provider-agnostic
+> orchestration shipped and stays); M5 drops multi-currency/FX and gains
+> **UPI profile + settle-up** instead.
 
 This roadmap breaks SplitSmart into sequential milestones from a usable MVP to a production launch and beyond. Each milestone has a clear goal, scope, and exit criteria. Timeframes are indicative for a small team (3–5 engineers) and should be treated as relative, not committed dates.
 
@@ -66,30 +71,31 @@ This roadmap breaks SplitSmart into sequential milestones from a usable MVP to a
 
 ---
 
-## Milestone 4 — In-App Payments *(≈2–3 weeks)*
+## Milestone 4 — Payment Orchestration *(≈2–3 weeks)* — ✅ shipped (card client deferred)
 
-**Goal:** Settle without leaving the app.
+**Goal:** Idempotent payment infrastructure with a clean provider seam.
 
 **Scope**
-- Stripe integration (payment intents), idempotent payment worker.
-- In-app settle-up flow, payment status tracking, confirmations.
-- Payment failure handling and reconciliation.
+- Provider-agnostic payment-intent orchestration (idempotent), webhook status machine, reconciliation job. *(Shipped.)*
+- ~~Stripe SDK client + payment sheet~~ → **deferred post-v1** (UPI is the v1 settlement rail; the Stripe adapter drops into the existing provider seam when needed).
 
-**Exit criteria:** A user can pay another member in-app and balances reconcile reliably, with no double-charges under retry.
+**Exit criteria (met for the shipped scope):** payment lifecycle is idempotent — no double-charges under retry or duplicate webhooks.
 
 ---
 
-## Milestone 5 — Receipts, OCR & Multi-Currency *(≈2–3 weeks)*
+## Milestone 5 — Receipts, OCR & UPI Settle-Up *(≈2–3 weeks)*
 
-**Goal:** Reduce entry friction and support travel.
+**Goal:** Reduce entry friction and make settling as easy as any UPI payment.
 
 **Scope**
+- **UPI profile:** user adds a UPI ID — typed, or extracted from a pasted `upi://` link / UPI QR contents; validated and stored on the account.
+- **UPI settle-up:** "Pay via UPI" on any owed balance opens the payer's UPI app with payee VPA + amount pre-filled; the payment is then recorded (idempotent) like a manual settlement.
 - Receipt capture + S3 pre-signed upload.
 - Async OCR pipeline; pre-filled expense forms from extracted data.
 - Itemized line-item splitting.
-- Multi-currency expenses with live FX; per-member display currency.
+- ~~Multi-currency expenses with live FX~~ → **post-v1** (INR only).
 
-**Exit criteria:** A user can photograph a receipt and get a pre-filled, itemized expense, including in a foreign currency.
+**Exit criteria:** A user with a UPI ID on their profile can be paid by any group member in two taps (UPI app opens pre-filled, settlement recorded); a user can photograph a receipt and get a pre-filled, itemized expense.
 
 ---
 
@@ -127,6 +133,8 @@ This roadmap breaks SplitSmart into sequential milestones from a usable MVP to a
 
 Prioritized from the PRD's future features:
 
+- Multi-currency + live FX (international expansion).
+- In-app card payments (Stripe) via the existing provider seam; UPI TPAP integration for verified payment status.
 - Recurring expenses & subscriptions.
 - Bank/card linking with smart transaction import.
 - AI receipt scanning improvements and category prediction.
@@ -144,8 +152,8 @@ Prioritized from the PRD's future features:
 | 1 | Auth & Groups | Users + groups |
 | 2 | Core Expenses | Logging + balances |
 | 3 | MVP Settlement | **Usable MVP (beta)** |
-| 4 | In-App Payments | Pay in-app |
-| 5 | Receipts/OCR/FX | Low-friction + travel |
+| 4 | Payment Orchestration | Idempotent payment infra (card client deferred) |
+| 5 | Receipts/OCR/UPI | Low-friction entry + UPI settle-up |
 | 6 | Hardening | Meets NFRs |
 | 7 | Public Launch | **GA on all platforms** |
 | — | Growth | Future features |

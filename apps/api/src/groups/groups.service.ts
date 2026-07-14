@@ -25,7 +25,7 @@ export class GroupsService {
       const group = await tx.group.create({
         data: {
           name: input.name,
-          defaultCurrency: input.defaultCurrency ?? 'USD',
+          defaultCurrency: input.defaultCurrency ?? 'INR',
           createdById: creatorUserId,
         },
       });
@@ -46,7 +46,14 @@ export class GroupsService {
   async getById(groupId: string): Promise<Group> {
     const group = await this.prisma.group.findUnique({
       where: { id: groupId },
-      include: { members: { where: { removedAt: null } } },
+      include: {
+        members: {
+          where: { removedAt: null },
+          // Expose only what members need of each other: display name and the
+          // UPI VPA for settle-up. Never the email or auth subject.
+          include: { user: { select: { name: true, upiId: true } } },
+        },
+      },
     });
     if (!group) throw new NotFoundException('Group not found');
     return group;

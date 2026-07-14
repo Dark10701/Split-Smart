@@ -3,7 +3,13 @@ import { View, Text, TextInput, Pressable, FlatList, StyleSheet } from 'react-na
 import { useAuth } from '../auth';
 import { api, type Group } from '../api';
 
-export function GroupsScreen({ onOpen }: { onOpen: (groupId: string) => void }) {
+export function GroupsScreen({
+  onOpen,
+  onOpenProfile,
+}: {
+  onOpen: (groupId: string) => void;
+  onOpenProfile: () => void;
+}) {
   const { token, signOut } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
   const [name, setName] = useState('');
@@ -34,9 +40,14 @@ export function GroupsScreen({ onOpen }: { onOpen: (groupId: string) => void }) 
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Your groups</Text>
-        <Pressable onPress={() => void signOut()}>
-          <Text style={styles.link}>Sign out</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable onPress={onOpenProfile}>
+            <Text style={styles.link}>Profile</Text>
+          </Pressable>
+          <Pressable onPress={() => void signOut()}>
+            <Text style={styles.link}>Sign out</Text>
+          </Pressable>
+        </View>
       </View>
       <View style={styles.row}>
         <TextInput
@@ -68,6 +79,7 @@ export function GroupsScreen({ onOpen }: { onOpen: (groupId: string) => void }) 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, gap: 12 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerActions: { flexDirection: 'row', gap: 16 },
   title: { fontSize: 22, fontWeight: '700' },
   link: { color: '#2563EB' },
   row: { flexDirection: 'row', gap: 8 },

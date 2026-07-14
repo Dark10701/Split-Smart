@@ -1,14 +1,13 @@
-/** Format integer minor units + currency as a human string, e.g. 1234 USD -> "$12.34". */
-const SYMBOLS: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', INR: '₹', JPY: '¥' };
+import { formatPaise } from '@splitsmart/types';
 
-// Currencies with no minor unit (amount is already the major unit).
-const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND']);
-
+/**
+ * Format integer minor units + currency. INR (the only v1 currency) gets
+ * Indian digit grouping (₹1,23,456.78); anything else falls back to a plain
+ * decimal so historical non-INR data still renders.
+ */
 export function formatMoney(amountMinor: number, currency: string): string {
-  const symbol = SYMBOLS[currency] ?? '';
+  if (currency === 'INR') return formatPaise(amountMinor);
   const sign = amountMinor < 0 ? '-' : '';
   const abs = Math.abs(amountMinor);
-  const major = ZERO_DECIMAL.has(currency) ? String(abs) : (abs / 100).toFixed(2);
-  const suffix = symbol ? '' : ` ${currency}`;
-  return `${sign}${symbol}${major}${suffix}`;
+  return `${sign}${(abs / 100).toFixed(2)} ${currency}`;
 }

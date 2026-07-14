@@ -21,7 +21,7 @@ type Tab = 'expenses' | 'balances' | 'activity';
 
 function memberName(members: GroupMember[], id: string): string {
   const m = members.find((x) => x.id === id);
-  return m ? (m.guestName ?? (m.userId ? 'Member' : 'Guest')) : 'Unknown';
+  return m ? (m.user?.name ?? m.guestName ?? 'Member') : 'Unknown';
 }
 
 function describeActivity(a: ActivityEntry): string {

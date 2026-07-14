@@ -19,6 +19,8 @@ describe('GroupsService', () => {
     expect(memberCreate).toHaveBeenCalledWith({
       data: { groupId: 'g1', userId: 'u1', role: 'admin' },
     });
+    // India-first: groups created without an explicit currency default to INR.
+    expect(groupCreate.mock.calls[0][0].data.defaultCurrency).toBe('INR');
   });
 
   it('join() rejects an invalid/used invitation', async () => {

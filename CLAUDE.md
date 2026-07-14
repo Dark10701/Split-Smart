@@ -15,7 +15,9 @@ When a request is ambiguous, infer intent from these documents before asking.
 
 ## Tech stack (do not change without an ADR)
 
-TypeScript everywhere. React Native (Expo) mobile, Next.js web, NestJS backend, PostgreSQL, Redis, BullMQ workers, S3 storage, Stripe payments, OAuth/OIDC auth, AWS deployment. The repo is a pnpm + Turborepo monorepo (`apps/`, `workers/`, `packages/`, `infra/`).
+TypeScript everywhere. React Native (Expo) mobile, Next.js web, NestJS backend, PostgreSQL, Redis, BullMQ workers, S3 storage, OAuth/OIDC auth, AWS deployment. The repo is a pnpm + Turborepo monorepo (`apps/`, `workers/`, `packages/`, `infra/`).
+
+**India-first (v1, decided 2026-07-14 — see ARCHITECTURE.md §13):** all money is INR (integer paise); multi-currency/FX is post-v1 (keep the explicit currency column on every row). Settlement is UPI-first — users attach a UPI ID (VPA) to their profile and payers settle via `upi://pay` deep links; SplitSmart records but never executes the payment. Stripe/card payments are deferred post-v1 behind the existing provider seam.
 
 ## Core principles
 

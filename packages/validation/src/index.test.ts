@@ -14,6 +14,8 @@ import {
   createSettlementSchema,
   createCommentSchema,
   createPaymentIntentSchema,
+  normalizeUpiInput,
+  upiIdInputSchema,
 } from './index';
 
 const uid = (n: number): string => `00000000-0000-4000-8000-00000000000${n}`;
@@ -194,5 +196,59 @@ describe('settlement & comment validation (M3)', () => {
       false,
     );
     expect(createPaymentIntentSchema.safeParse({ ...good, amountMinor: -1 }).success).toBe(false);
+  });
+
+  it('accepts the upi settlement method', () => {
+    const r = createSettlementSchema.safeParse({
+      fromMemberId: uid(1),
+      toMemberId: uid(2),
+      amountMinor: 500,
+      currency: 'INR',
+      method: 'upi',
+      idempotencyKey: 'idem-key-123456',
+    });
+    expect(r.success).toBe(true);
+  });
+});
+
+describe('UPI validation (M5)', () => {
+  it('accepts a bare VPA and lowercases it', () => {
+    expect(normalizeUpiInput('Maya@okHDFCbank')).toBe('maya@okhdfcbank');
+    expect(normalizeUpiInput('  ravi.k-99@ybl ')).toBe('ravi.k-99@ybl');
+  });
+
+  it('extracts the VPA from a upi:// link (pasted QR contents)', () => {
+    expect(normalizeUpiInput('upi://pay?pa=maya@okhdfcbank&pn=Maya&cu=INR')).toBe(
+      'maya@okhdfcbank',
+    );
+    expect(normalizeUpiInput('upi://pay?pn=Maya&pa=ravi%40ybl&am=100.00')).toBe('ravi@ybl');
+  });
+
+  it('rejects things that are not VPAs or UPI links', () => {
+    expect(normalizeUpiInput('not a upi id')).toBeNull();
+    expect(normalizeUpiInput('maya@')).toBeNull();
+    expect(normalizeUpiInput('@bank')).toBeNull();
+    expect(normalizeUpiInput('https://example.com/?x=1')).toBeNull();
+    expect(normalizeUpiInput('upi://pay?pn=NoVpaHere')).toBeNull();
+  });
+
+  it('returns null (not a throw) for malformed percent-escapes in links', () => {
+    expect(normalizeUpiInput('upi://pay?pa=maya%ZZ@ybl')).toBeNull();
+    expect(upiIdInputSchema.safeParse('upi://pay?pa=maya%ZZ@ybl').success).toBe(false);
+  });
+
+  it('upiIdInputSchema transforms input to the normalized VPA', () => {
+    const ok = upiIdInputSchema.safeParse('upi://pay?pa=Maya@okhdfcbank&pn=M');
+    expect(ok.success).toBe(true);
+    if (ok.success) expect(ok.data).toBe('maya@okhdfcbank');
+    expect(upiIdInputSchema.safeParse('garbage').success).toBe(false);
+  });
+
+  it('updateMe accepts setting and clearing upiId', () => {
+    const set = updateMeSchema.safeParse({ upiId: 'maya@okhdfcbank' });
+    expect(set.success).toBe(true);
+    if (set.success) expect(set.data.upiId).toBe('maya@okhdfcbank');
+    expect(updateMeSchema.safeParse({ upiId: null }).success).toBe(true);
+    expect(updateMeSchema.safeParse({ upiId: 'nope' }).success).toBe(false);
   });
 });

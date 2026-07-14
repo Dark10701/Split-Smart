@@ -17,7 +17,7 @@ const METHODS: Array<{ key: SplitMethod; label: string }> = [
 ];
 
 function memberLabel(m: GroupMember): string {
-  return m.guestName ?? (m.userId ? 'Member' : 'Guest');
+  return m.user?.name ?? m.guestName ?? 'Member';
 }
 
 /** Parse a decimal major-unit string ("12.34") into integer minor units. */
