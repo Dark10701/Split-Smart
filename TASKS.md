@@ -336,8 +336,8 @@ Run against a live API + Postgres + Redis (`docker compose up -d`, `prisma migra
 - [ ] **M6-12** Offline store + sync queue on mobile. *(deferred: large standalone mobile feature.)*
 - [ ] **M6-13** Conflict reconciliation on reconnect (test). *(deferred with M6-12.)*
 - [x] **M6-14** Notification preferences screen (per channel/type). *(GET/PATCH `/me/notification-prefs` + mobile `NotificationPrefsScreen`. Verified live.)*
-- [ ] **M6-15** Accessibility audit pass on core screens. *(belongs with the web UI redesign; labels/roles to be audited there.)*
-- [ ] **M6-16** Fix accessibility findings (per-screen tickets). *(follows M6-15.)*
+- [x] **M6-15** Accessibility audit pass on core screens. *(web audited during the GPay redesign — dialog/tab/group roles, label associations, decorative aria-hidden.)*
+- [x] **M6-16** Fix accessibility findings (per-screen tickets). *(Modal → real dialog with Escape + focus management; chips `aria-pressed`; tabs `role=tablist/tab` + `aria-selected`; inputs `htmlFor`/`id`; decorative marks hidden.)*
 - [x] **M6-17** GDPR/CCPA: data export endpoint + UI. *(`GET /me/export` full bundle. Verified live. Web download UI pairs with the redesign.)*
 - [x] **M6-18** GDPR/CCPA: account deletion flow. *(`DELETE /me` anonymizes, retains financial records, breaks login binding. Verified live.)*
 - [ ] **M6-19** Backup + point-in-time-recovery verification. *(external: RDS PITR / managed backups.)*
