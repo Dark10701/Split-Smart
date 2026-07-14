@@ -148,6 +148,22 @@ export const splitInputSchema = z.discriminatedUnion('type', [
     type: z.literal('shares'),
     shares: z.array(z.object({ memberId, units: z.number().int().positive() })).min(1),
   }),
+  /**
+   * Line items (e.g. from a receipt): each item is split equally among its
+   * participants; item amounts must sum to the expense total.
+   */
+  z.object({
+    type: z.literal('itemized'),
+    items: z
+      .array(
+        z.object({
+          description: z.string().min(1).max(140),
+          amountMinor: z.number().int().positive(),
+          participantMemberIds: z.array(memberId).min(1),
+        }),
+      )
+      .min(1),
+  }),
 ]);
 export type SplitInput = z.infer<typeof splitInputSchema>;
 

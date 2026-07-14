@@ -103,5 +103,27 @@ export function computeShares(amountMinor: number, split: SplitInput): ComputedS
       const entries = split.shares.map((s) => ({ memberId: s.memberId, weight: s.units }));
       return largestRemainder(amountMinor, entries, unitSum);
     }
+
+    case 'itemized': {
+      const itemSum = split.items.reduce((acc, i) => acc + i.amountMinor, 0);
+      if (itemSum !== amountMinor) {
+        throw new SplitError(
+          `Item amounts must sum to the total: got ${itemSum}, expected ${amountMinor}`,
+        );
+      }
+      // Each item splits equally among its participants; a member may appear
+      // in any number of items — their shares aggregate.
+      const totals = new Map<string, number>();
+      for (const item of split.items) {
+        assertUniqueMembers(item.participantMemberIds);
+        const entries = item.participantMemberIds.map((memberId) => ({ memberId, weight: 1 }));
+        for (const share of largestRemainder(item.amountMinor, entries, entries.length)) {
+          totals.set(share.memberId, (totals.get(share.memberId) ?? 0) + share.shareMinor);
+        }
+      }
+      return [...totals.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([memberId, shareMinor]) => ({ memberId, shareMinor }));
+    }
   }
 }

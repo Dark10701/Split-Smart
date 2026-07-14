@@ -170,6 +170,81 @@ describe('computeShares', () => {
     });
   });
 
+  describe('itemized', () => {
+    it('splits each item equally and aggregates per member', () => {
+      // Starter ₹300 shared by A+B; mains ₹500 only B; dessert ₹200 only A.
+      const r = computeShares(1000, {
+        type: 'itemized',
+        items: [
+          { description: 'Starter', amountMinor: 300, participantMemberIds: [A, B] },
+          { description: 'Mains', amountMinor: 500, participantMemberIds: [B] },
+          { description: 'Dessert', amountMinor: 200, participantMemberIds: [A] },
+        ],
+      });
+      expect(total(r)).toBe(1000);
+      expect(r.find((s) => s.memberId === A)?.shareMinor).toBe(350); // 150 + 200
+      expect(r.find((s) => s.memberId === B)?.shareMinor).toBe(650); // 150 + 500
+    });
+
+    it('rejects items that do not sum to the total', () => {
+      expect(() =>
+        computeShares(1000, {
+          type: 'itemized',
+          items: [{ description: 'Starter', amountMinor: 999, participantMemberIds: [A] }],
+        }),
+      ).toThrow(/must sum to the total/);
+    });
+
+    it('reconciles rounding within each item (no lost paise)', () => {
+      const r = computeShares(101, {
+        type: 'itemized',
+        items: [{ description: 'Odd item', amountMinor: 101, participantMemberIds: [A, B, C] }],
+      });
+      expect(total(r)).toBe(101);
+      expect(r.map((s) => s.shareMinor).sort()).toEqual([33, 34, 34]);
+    });
+
+    it('rejects a duplicate participant within one item', () => {
+      expect(() =>
+        computeShares(100, {
+          type: 'itemized',
+          items: [{ description: 'Dup', amountMinor: 100, participantMemberIds: [A, A] }],
+        }),
+      ).toThrow(SplitError);
+    });
+
+    it('allows the same member across many items (shares aggregate)', () => {
+      const r = computeShares(300, {
+        type: 'itemized',
+        items: [
+          { description: 'One', amountMinor: 100, participantMemberIds: [A] },
+          { description: 'Two', amountMinor: 200, participantMemberIds: [A] },
+        ],
+      });
+      expect(r).toEqual([{ memberId: A, shareMinor: 300 }]);
+    });
+
+    it('property: itemized totals always reconcile across odd splits', () => {
+      for (const amounts of [
+        [1, 1, 1],
+        [7, 13, 80],
+        [333, 333, 334],
+      ]) {
+        const totalAmount = amounts.reduce((s, x) => s + x, 0);
+        const r = computeShares(totalAmount, {
+          type: 'itemized',
+          items: amounts.map((amountMinor, i) => ({
+            description: `Item ${i}`,
+            amountMinor,
+            participantMemberIds: [A, B, C],
+          })),
+        });
+        expect(total(r)).toBe(totalAmount);
+        expect(r.every((s) => s.shareMinor >= 0)).toBe(true);
+      }
+    });
+  });
+
   it('rejects non-positive or fractional totals', () => {
     expect(() => computeShares(0, { type: 'equal', participantMemberIds: [A] })).toThrow(
       SplitError,

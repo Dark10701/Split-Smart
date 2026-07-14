@@ -88,6 +88,55 @@ describe('ExpensesService', () => {
     expect(invalidate).toHaveBeenCalledWith(GID);
   });
 
+  it('create() persists line items for an itemized split', async () => {
+    const expenseCreate = jest.fn().mockResolvedValue({
+      id: 'e2',
+      description: 'Groceries',
+      amountMinor: 500,
+      currency: 'INR',
+      splitType: 'itemized',
+      splits: [],
+      items: [],
+    });
+    const tx = {
+      expense: { create: expenseCreate },
+      activityLog: { create: jest.fn().mockResolvedValue({}) },
+    };
+    const { svc } = makeService({
+      groupMember: { findMany: membersFindMany([A, B]) },
+      $transaction: (fn: (t: unknown) => unknown) => fn(tx),
+    });
+
+    await svc.create(GID, 'user-1', {
+      description: 'Groceries',
+      amountMinor: 500,
+      currency: 'INR',
+      payerMemberId: A,
+      occurredAt: new Date().toISOString(),
+      split: {
+        type: 'itemized',
+        items: [
+          { description: 'Veggies', amountMinor: 300, participantMemberIds: [A, B] },
+          { description: 'Ice cream', amountMinor: 200, participantMemberIds: [B] },
+        ],
+      },
+    });
+
+    const created = expenseCreate.mock.calls[0][0];
+    expect(created.data.items.create).toHaveLength(2);
+    expect(created.data.items.create[0]).toEqual({
+      description: 'Veggies',
+      amountMinor: 300,
+      participantMemberIds: [A, B],
+    });
+    // Shares aggregate: A owes 150, B owes 150 + 200.
+    const shares = created.data.splits.create;
+    expect(shares).toEqual([
+      { memberId: A, shareMinor: 150 },
+      { memberId: B, shareMinor: 350 },
+    ]);
+  });
+
   it('create() rejects an exact split that does not reconcile', async () => {
     const { svc } = makeService({
       groupMember: { findMany: membersFindMany([A, B]) },

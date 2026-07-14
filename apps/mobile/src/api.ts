@@ -28,12 +28,18 @@ export interface GroupDetail extends Group {
   members: GroupMember[];
 }
 
-export type SplitMethod = 'equal' | 'exact' | 'percentage' | 'shares';
+export type SplitMethod = 'equal' | 'exact' | 'percentage' | 'shares' | 'itemized';
 
 export interface ExpenseSplit {
   id: string;
   memberId: string;
   shareMinor: number;
+}
+export interface ExpenseItem {
+  id: string;
+  description: string;
+  amountMinor: number;
+  participantMemberIds: string[];
 }
 export interface Expense {
   id: string;
@@ -44,9 +50,10 @@ export interface Expense {
   category: string | null;
   description: string;
   occurredAt: string;
-  splitType: SplitMethod | 'itemized';
+  splitType: SplitMethod;
   version: number;
   splits: ExpenseSplit[];
+  items: ExpenseItem[];
 }
 export interface ExpensePage {
   items: Expense[];
@@ -57,7 +64,11 @@ export type SplitPayload =
   | { type: 'equal'; participantMemberIds: string[] }
   | { type: 'exact'; shares: Array<{ memberId: string; amountMinor: number }> }
   | { type: 'percentage'; shares: Array<{ memberId: string; percentBps: number }> }
-  | { type: 'shares'; shares: Array<{ memberId: string; units: number }> };
+  | { type: 'shares'; shares: Array<{ memberId: string; units: number }> }
+  | {
+      type: 'itemized';
+      items: Array<{ description: string; amountMinor: number; participantMemberIds: string[] }>;
+    };
 
 export interface CreateExpenseBody {
   description: string;
