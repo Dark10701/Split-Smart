@@ -328,7 +328,7 @@ Run against a live API + Postgres + Redis (`docker compose up -d`, `prisma migra
 - [~] **M6-04** OWASP review pass + fix critical/high findings. *(security review run over the M6 diff; findings addressed — see PR.)*
 - [ ] **M6-05** Add OpenTelemetry tracing to API. *(deferred: needs a collector/backend to be meaningful; env-gated instrumentation is the follow-up.)*
 - [ ] **M6-06** Add tracing to each worker. *(deferred with M6-05.)*
-- [ ] **M6-07** Prometheus metrics + Grafana dashboards. *(deferred: needs Prometheus/Grafana infra.)*
+- [~] **M6-07** Prometheus metrics + Grafana dashboards. *(metrics half done: `GET /metrics` exposes default process metrics + per-route `http_requests_total` / `http_request_duration_seconds` via a global interceptor. Verified live. Grafana dashboards need Grafana infra.)*
 - [ ] **M6-08** Alerting on error rate + latency SLOs. *(external: alertmanager/on-call infra.)*
 - [ ] **M6-09** Integrate Sentry (client + server). *(deferred: env-gated Sentry DSN; no account here.)*
 - [ ] **M6-10** Load test core flows; record baselines. *(external: load-test rig + staging.)*

@@ -16,6 +16,7 @@ import { FeedModule } from './feed/feed.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RateLimitModule } from './common/rate-limit/rate-limit.module';
 import { AuditModule } from './common/audit/audit.module';
+import { MetricsModule } from './common/metrics/metrics.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { AuditModule } from './common/audit/audit.module';
     RedisModule,
     RateLimitModule,
     AuditModule,
+    MetricsModule,
     RealtimeModule,
     NotificationsModule,
     AuthModule,
