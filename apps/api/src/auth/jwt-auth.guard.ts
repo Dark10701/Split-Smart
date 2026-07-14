@@ -1,9 +1,4 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 import { authClaimsSchema } from '@splitsmart/validation';
@@ -28,7 +23,9 @@ export class JwtAuthGuard implements CanActivate {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<{ headers: Record<string, string>; user?: unknown }>();
+    const request = context
+      .switchToHttp()
+      .getRequest<{ headers: Record<string, string>; user?: unknown }>();
     const header = request.headers['authorization'] ?? '';
     const [scheme, token] = header.split(' ');
     if (scheme !== 'Bearer' || !token) {

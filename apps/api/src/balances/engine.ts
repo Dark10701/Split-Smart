@@ -92,10 +92,7 @@ export function computeNetBalances(
  * overwhelmingly common case and never worse than pairwise settling.
  * Deterministic: ties broken by memberId.
  */
-export function minimizeDebts(
-  netByMember: Record<string, number>,
-  currency: string,
-): Transfer[] {
+export function minimizeDebts(netByMember: Record<string, number>, currency: string): Transfer[] {
   const sum = Object.values(netByMember).reduce((s, v) => s + v, 0);
   if (sum !== 0) throw new BalanceError(`Nets sum to ${sum}, expected 0`);
 

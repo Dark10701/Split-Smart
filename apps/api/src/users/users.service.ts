@@ -12,7 +12,9 @@ export class UsersService {
   /** Resolve the internal user for verified claims, creating them on first sign-in. */
   async resolveFromClaims(claims: AuthClaims): Promise<User> {
     const data = claimsToUserUpsert(claims);
-    const existing = await this.prisma.user.findUnique({ where: { authSubject: data.authSubject } });
+    const existing = await this.prisma.user.findUnique({
+      where: { authSubject: data.authSubject },
+    });
     if (existing) return existing;
 
     return this.prisma.user.create({
@@ -20,7 +22,9 @@ export class UsersService {
         authSubject: data.authSubject,
         email: data.email,
         name: data.name,
-        notificationPrefs: { create: defaultNotificationPrefs('').map(({ userId: _u, ...p }) => p) },
+        notificationPrefs: {
+          create: defaultNotificationPrefs('').map(({ userId: _u, ...p }) => p),
+        },
       },
     });
   }

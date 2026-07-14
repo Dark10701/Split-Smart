@@ -58,8 +58,7 @@ export function AddExpenseScreen({
     });
   };
 
-  const setValue = (id: string, v: string): void =>
-    setValues((prev) => ({ ...prev, [id]: v }));
+  const setValue = (id: string, v: string): void => setValues((prev) => ({ ...prev, [id]: v }));
 
   const buildSplit = (amountMinor: number): SplitPayload | string => {
     const chosen = members.filter((m) => participants.has(m.id));
@@ -69,10 +68,14 @@ export function AddExpenseScreen({
       return { type: 'equal', participantMemberIds: chosen.map((m) => m.id) };
     }
     if (method === 'exact') {
-      const shares = chosen.map((m) => ({ memberId: m.id, amountMinor: toMinor(values[m.id] ?? '') ?? -1 }));
+      const shares = chosen.map((m) => ({
+        memberId: m.id,
+        amountMinor: toMinor(values[m.id] ?? '') ?? -1,
+      }));
       if (shares.some((s) => s.amountMinor < 0)) return 'Enter a valid amount for each participant';
       const sum = shares.reduce((s, x) => s + x.amountMinor, 0);
-      if (sum !== amountMinor) return `Exact amounts must sum to the total (${sum} vs ${amountMinor})`;
+      if (sum !== amountMinor)
+        return `Exact amounts must sum to the total (${sum} vs ${amountMinor})`;
       return { type: 'exact', shares };
     }
     if (method === 'percentage') {
@@ -195,7 +198,11 @@ export function AddExpenseScreen({
       })}
 
       {error && <Text style={styles.error}>{error}</Text>}
-      <Pressable style={[styles.button, saving && styles.buttonDisabled]} disabled={saving} onPress={() => void submit()}>
+      <Pressable
+        style={[styles.button, saving && styles.buttonDisabled]}
+        disabled={saving}
+        onPress={() => void submit()}
+      >
         <Text style={styles.buttonText}>{saving ? 'Saving…' : 'Save expense'}</Text>
       </Pressable>
     </ScrollView>
@@ -209,15 +216,34 @@ const styles = StyleSheet.create({
   section: { fontSize: 16, fontWeight: '600', marginTop: 8 },
   input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 12 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12 },
+  chip: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
   chipActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
   chipText: { color: '#111827' },
   chipTextActive: { color: '#fff', fontWeight: '600' },
   participantRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   participantToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
   checkbox: { fontSize: 18 },
-  smallInput: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 8, width: 90, textAlign: 'right' },
-  button: { backgroundColor: '#2563EB', padding: 14, borderRadius: 8, alignItems: 'center', marginTop: 12 },
+  smallInput: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    padding: 8,
+    width: 90,
+    textAlign: 'right',
+  },
+  button: {
+    backgroundColor: '#2563EB',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 12,
+  },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: '#fff', fontWeight: '600' },
   error: { color: '#DC2626' },

@@ -3,14 +3,35 @@ import Constants from 'expo-constants';
 export const API_URL =
   (Constants.expoConfig?.extra?.apiUrl as string | undefined) ?? 'http://localhost:3001';
 
-export interface Me { id: string; email: string; name: string; defaultCurrency: string }
-export interface Group { id: string; name: string; defaultCurrency: string; createdAt: string }
-export interface GroupMember { id: string; userId: string | null; guestName: string | null; role: string }
-export interface GroupDetail extends Group { members: GroupMember[] }
+export interface Me {
+  id: string;
+  email: string;
+  name: string;
+  defaultCurrency: string;
+}
+export interface Group {
+  id: string;
+  name: string;
+  defaultCurrency: string;
+  createdAt: string;
+}
+export interface GroupMember {
+  id: string;
+  userId: string | null;
+  guestName: string | null;
+  role: string;
+}
+export interface GroupDetail extends Group {
+  members: GroupMember[];
+}
 
 export type SplitMethod = 'equal' | 'exact' | 'percentage' | 'shares';
 
-export interface ExpenseSplit { id: string; memberId: string; shareMinor: number }
+export interface ExpenseSplit {
+  id: string;
+  memberId: string;
+  shareMinor: number;
+}
 export interface Expense {
   id: string;
   groupId: string;
@@ -24,7 +45,10 @@ export interface Expense {
   version: number;
   splits: ExpenseSplit[];
 }
-export interface ExpensePage { items: Expense[]; nextCursor: string | null }
+export interface ExpensePage {
+  items: Expense[];
+  nextCursor: string | null;
+}
 
 export type SplitPayload =
   | { type: 'equal'; participantMemberIds: string[] }
@@ -44,8 +68,16 @@ export interface CreateExpenseBody {
 
 /** currency -> memberId -> net minor units (positive = owed, negative = owes). */
 export type NetBalances = Record<string, Record<string, number>>;
-export interface Transfer { fromMemberId: string; toMemberId: string; amountMinor: number; currency: string }
-export interface GroupBalances { nets: NetBalances; settlements: Transfer[] }
+export interface Transfer {
+  fromMemberId: string;
+  toMemberId: string;
+  amountMinor: number;
+  currency: string;
+}
+export interface GroupBalances {
+  nets: NetBalances;
+  settlements: Transfer[];
+}
 
 export interface Payment {
   id: string;
@@ -67,9 +99,17 @@ export interface ActivityEntry {
   payload: Record<string, unknown>;
   createdAt: string;
 }
-export interface ActivityPage { items: ActivityEntry[]; nextCursor: string | null }
+export interface ActivityPage {
+  items: ActivityEntry[];
+  nextCursor: string | null;
+}
 
-export interface Comment { id: string; authorId: string; body: string; createdAt: string }
+export interface Comment {
+  id: string;
+  authorId: string;
+  body: string;
+  createdAt: string;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -115,7 +155,8 @@ export const api = {
     }).then(unwrap<GroupMember>),
   listExpenses: (token: string, groupId: string, cursor?: string) =>
     fetch(
-      `${API_URL}/groups/${groupId}/expenses` + (cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''),
+      `${API_URL}/groups/${groupId}/expenses` +
+        (cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''),
       { headers: headers(token) },
     ).then(unwrap<ExpensePage>),
   createExpense: (token: string, groupId: string, body: CreateExpenseBody) =>

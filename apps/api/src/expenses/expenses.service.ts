@@ -35,14 +35,14 @@ export class ExpensesService {
     actorUserId: string,
     expense: ExpenseWithSplits,
   ): Promise<void> {
-    const memberIds = [...new Set([expense.payerMemberId, ...expense.splits.map((s) => s.memberId)])];
+    const memberIds = [
+      ...new Set([expense.payerMemberId, ...expense.splits.map((s) => s.memberId)]),
+    ];
     const members = await this.prisma.groupMember.findMany({
       where: { id: { in: memberIds }, userId: { not: null } },
       select: { userId: true },
     });
-    const recipientUserIds = members
-      .map((m) => m.userId)
-      .filter((id): id is string => id !== null);
+    const recipientUserIds = members.map((m) => m.userId).filter((id): id is string => id !== null);
     await this.notifications.notify({
       groupId,
       type: 'expense_added',
@@ -120,7 +120,9 @@ export class ExpensesService {
           occurredAt: new Date(input.occurredAt),
           splitType: input.split.type,
           createdById: actorUserId,
-          splits: { create: shares.map((s) => ({ memberId: s.memberId, shareMinor: s.shareMinor })) },
+          splits: {
+            create: shares.map((s) => ({ memberId: s.memberId, shareMinor: s.shareMinor })),
+          },
         },
         include: { splits: true },
       });
@@ -138,7 +140,10 @@ export class ExpensesService {
     return expense;
   }
 
-  async list(groupId: string, query: ListExpensesQuery): Promise<{ items: ExpenseWithSplits[]; nextCursor: string | null }> {
+  async list(
+    groupId: string,
+    query: ListExpensesQuery,
+  ): Promise<{ items: ExpenseWithSplits[]; nextCursor: string | null }> {
     const items = await this.prisma.expense.findMany({
       where: { groupId, deletedAt: null },
       include: { splits: true },
@@ -178,7 +183,10 @@ export class ExpensesService {
     const nextAmount = input.amountMinor ?? current.amountMinor;
     let shares: Array<{ memberId: string; shareMinor: number }> | null = null;
     if (input.split) {
-      const memberIds = [...this.splitMemberIds(input.split), input.payerMemberId ?? current.payerMemberId];
+      const memberIds = [
+        ...this.splitMemberIds(input.split),
+        input.payerMemberId ?? current.payerMemberId,
+      ];
       await this.assertMembersInGroup(groupId, memberIds);
       shares = this.computeOrThrow(nextAmount, input.split);
     } else if (input.payerMemberId) {
@@ -201,7 +209,11 @@ export class ExpensesService {
           splitType: input.split ? input.split.type : undefined,
           version: { increment: 1 },
           ...(shares
-            ? { splits: { create: shares.map((s) => ({ memberId: s.memberId, shareMinor: s.shareMinor })) } }
+            ? {
+                splits: {
+                  create: shares.map((s) => ({ memberId: s.memberId, shareMinor: s.shareMinor })),
+                },
+              }
             : {}),
         },
         include: { splits: true },

@@ -37,7 +37,8 @@ export class StubPaymentProvider implements PaymentProvider {
   parseWebhook(rawBody: string, signature: string | undefined): ProviderWebhookEvent {
     const [providerRef, status] = rawBody.split(':');
     if (!providerRef || !status) throw new BadRequestException('Malformed webhook payload');
-    if (signature !== `sig:${providerRef}`) throw new BadRequestException('Invalid webhook signature');
+    if (signature !== `sig:${providerRef}`)
+      throw new BadRequestException('Invalid webhook signature');
     if (status !== 'succeeded' && status !== 'failed' && status !== 'pending') {
       throw new BadRequestException('Unknown webhook status');
     }

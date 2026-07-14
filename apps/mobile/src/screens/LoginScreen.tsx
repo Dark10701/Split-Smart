@@ -15,8 +15,8 @@ export function LoginScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>SplitSmart</Text>
       <Text style={styles.body}>
-        Sign in to track and settle shared expenses. Production builds use
-        Google, Apple, or email; for now, paste a valid bearer token.
+        Sign in to track and settle shared expenses. Production builds use Google, Apple, or email;
+        for now, paste a valid bearer token.
       </Text>
       <TextInput
         style={styles.input}

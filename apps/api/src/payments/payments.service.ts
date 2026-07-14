@@ -5,7 +5,11 @@ import { PrismaService } from '../database/prisma.service';
 import { BalancesService } from '../balances/balances.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
-import { PAYMENT_PROVIDER, type PaymentProvider, type ProviderIntentStatus } from './payment-provider';
+import {
+  PAYMENT_PROVIDER,
+  type PaymentProvider,
+  type ProviderIntentStatus,
+} from './payment-provider';
 
 export interface IntentResult {
   paymentId: string;
@@ -108,7 +112,10 @@ export class PaymentsService {
    * completed/failed exactly once and recomputes balances on success. Safe to
    * receive duplicate webhooks — a terminal payment is left untouched.
    */
-  async handleWebhook(rawBody: string, signature: string | undefined): Promise<{ handled: boolean }> {
+  async handleWebhook(
+    rawBody: string,
+    signature: string | undefined,
+  ): Promise<{ handled: boolean }> {
     const event = this.provider.parseWebhook(rawBody, signature);
     const payment = await this.prisma.payment.findFirst({
       where: { providerRef: event.providerRef },
@@ -130,7 +137,9 @@ export class PaymentsService {
    * Reconciliation job (M4-11): re-check stale pending payments against the
    * provider and settle their status, catching any missed webhooks.
    */
-  async reconcileStale(now: number = Date.now()): Promise<{ checked: number; transitioned: number }> {
+  async reconcileStale(
+    now: number = Date.now(),
+  ): Promise<{ checked: number; transitioned: number }> {
     const cutoff = new Date(now - STALE_AFTER_MS);
     const stale = await this.prisma.payment.findMany({
       where: { status: 'pending', method: 'stripe', createdAt: { lt: cutoff } },

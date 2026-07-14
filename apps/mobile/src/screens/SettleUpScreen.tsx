@@ -38,9 +38,7 @@ export function SettleUpScreen({
   const members = group.members;
   const [from, setFrom] = useState(suggested?.fromMemberId ?? members[0]?.id ?? '');
   const [to, setTo] = useState(suggested?.toMemberId ?? members[1]?.id ?? '');
-  const [amount, setAmount] = useState(
-    suggested ? (suggested.amountMinor / 100).toFixed(2) : '',
-  );
+  const [amount, setAmount] = useState(suggested ? (suggested.amountMinor / 100).toFixed(2) : '');
   const [method, setMethod] = useState<'cash' | 'offline'>('cash');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -80,8 +78,14 @@ export function SettleUpScreen({
       <Text style={styles.section}>Who paid</Text>
       <View style={styles.chips}>
         {members.map((m) => (
-          <Pressable key={m.id} style={[styles.chip, from === m.id && styles.chipActive]} onPress={() => setFrom(m.id)}>
-            <Text style={from === m.id ? styles.chipTextActive : styles.chipText}>{memberLabel(members, m.id)}</Text>
+          <Pressable
+            key={m.id}
+            style={[styles.chip, from === m.id && styles.chipActive]}
+            onPress={() => setFrom(m.id)}
+          >
+            <Text style={from === m.id ? styles.chipTextActive : styles.chipText}>
+              {memberLabel(members, m.id)}
+            </Text>
           </Pressable>
         ))}
       </View>
@@ -89,8 +93,14 @@ export function SettleUpScreen({
       <Text style={styles.section}>Paid to</Text>
       <View style={styles.chips}>
         {members.map((m) => (
-          <Pressable key={m.id} style={[styles.chip, to === m.id && styles.chipActive]} onPress={() => setTo(m.id)}>
-            <Text style={to === m.id ? styles.chipTextActive : styles.chipText}>{memberLabel(members, m.id)}</Text>
+          <Pressable
+            key={m.id}
+            style={[styles.chip, to === m.id && styles.chipActive]}
+            onPress={() => setTo(m.id)}
+          >
+            <Text style={to === m.id ? styles.chipTextActive : styles.chipText}>
+              {memberLabel(members, m.id)}
+            </Text>
           </Pressable>
         ))}
       </View>
@@ -107,7 +117,11 @@ export function SettleUpScreen({
       <Text style={styles.section}>Method</Text>
       <View style={styles.chips}>
         {(['cash', 'offline'] as const).map((mth) => (
-          <Pressable key={mth} style={[styles.chip, method === mth && styles.chipActive]} onPress={() => setMethod(mth)}>
+          <Pressable
+            key={mth}
+            style={[styles.chip, method === mth && styles.chipActive]}
+            onPress={() => setMethod(mth)}
+          >
             <Text style={method === mth ? styles.chipTextActive : styles.chipText}>
               {mth === 'cash' ? 'Cash' : 'Bank / other'}
             </Text>
@@ -117,12 +131,17 @@ export function SettleUpScreen({
 
       {suggested && (
         <Text style={styles.muted}>
-          Suggested: {memberLabel(members, suggested.fromMemberId)} → {memberLabel(members, suggested.toMemberId)}{' '}
+          Suggested: {memberLabel(members, suggested.fromMemberId)} →{' '}
+          {memberLabel(members, suggested.toMemberId)}{' '}
           {formatMoney(suggested.amountMinor, suggested.currency)}
         </Text>
       )}
       {error && <Text style={styles.error}>{error}</Text>}
-      <Pressable style={[styles.button, saving && styles.buttonDisabled]} disabled={saving} onPress={() => void submit()}>
+      <Pressable
+        style={[styles.button, saving && styles.buttonDisabled]}
+        disabled={saving}
+        onPress={() => void submit()}
+      >
         <Text style={styles.buttonText}>{saving ? 'Saving…' : 'Record payment'}</Text>
       </Pressable>
     </View>
@@ -136,11 +155,23 @@ const styles = StyleSheet.create({
   section: { fontSize: 15, fontWeight: '600', marginTop: 6 },
   input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 12 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12 },
+  chip: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
   chipActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
   chipText: { color: '#111827' },
   chipTextActive: { color: '#fff', fontWeight: '600' },
-  button: { backgroundColor: '#2563EB', padding: 14, borderRadius: 8, alignItems: 'center', marginTop: 12 },
+  button: {
+    backgroundColor: '#2563EB',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 12,
+  },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: '#fff', fontWeight: '600' },
   muted: { color: '#6B7280' },

@@ -64,7 +64,10 @@ async function deliverInApp(job: NotificationJob): Promise<DeliveryResult> {
   return { channel: 'in_app', delivered: true, detail: `acked for user ${job.userId}` };
 }
 
-const HANDLERS: Record<NotificationJob['channel'], (j: NotificationJob) => Promise<DeliveryResult>> = {
+const HANDLERS: Record<
+  NotificationJob['channel'],
+  (j: NotificationJob) => Promise<DeliveryResult>
+> = {
   push: deliverPush,
   email: deliverEmail,
   sms: deliverSms,

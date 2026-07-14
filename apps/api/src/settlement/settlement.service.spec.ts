@@ -64,7 +64,15 @@ describe('SettlementService.recordManual', () => {
   });
 
   it('records a new settlement, logs activity, invalidates balances, and notifies the payee', async () => {
-    const created = { id: 'p9', groupId: GID, fromMemberId: A, toMemberId: B, amountMinor: 500, currency: 'USD', method: 'cash' };
+    const created = {
+      id: 'p9',
+      groupId: GID,
+      fromMemberId: A,
+      toMemberId: B,
+      amountMinor: 500,
+      currency: 'USD',
+      method: 'cash',
+    };
     const paymentCreate = jest.fn().mockResolvedValue(created);
     const activityCreate = jest.fn().mockResolvedValue({});
     const tx = { payment: { create: paymentCreate }, activityLog: { create: activityCreate } };

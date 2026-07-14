@@ -1,10 +1,26 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
-export interface Group { id: string; name: string; defaultCurrency: string; createdAt: string }
-export interface GroupMember { id: string; userId: string | null; guestName: string | null; role: string }
-export interface GroupDetail extends Group { members: GroupMember[] }
+export interface Group {
+  id: string;
+  name: string;
+  defaultCurrency: string;
+  createdAt: string;
+}
+export interface GroupMember {
+  id: string;
+  userId: string | null;
+  guestName: string | null;
+  role: string;
+}
+export interface GroupDetail extends Group {
+  members: GroupMember[];
+}
 
-export interface ExpenseSplit { id: string; memberId: string; shareMinor: number }
+export interface ExpenseSplit {
+  id: string;
+  memberId: string;
+  shareMinor: number;
+}
 export interface Expense {
   id: string;
   payerMemberId: string;
@@ -15,7 +31,10 @@ export interface Expense {
   occurredAt: string;
   splits: ExpenseSplit[];
 }
-export interface ExpensePage { items: Expense[]; nextCursor: string | null }
+export interface ExpensePage {
+  items: Expense[];
+  nextCursor: string | null;
+}
 
 export type SplitPayload =
   | { type: 'equal'; participantMemberIds: string[] }
@@ -23,7 +42,12 @@ export type SplitPayload =
   | { type: 'percentage'; shares: Array<{ memberId: string; percentBps: number }> }
   | { type: 'shares'; shares: Array<{ memberId: string; units: number }> };
 
-export interface Transfer { fromMemberId: string; toMemberId: string; amountMinor: number; currency: string }
+export interface Transfer {
+  fromMemberId: string;
+  toMemberId: string;
+  amountMinor: number;
+  currency: string;
+}
 export interface GroupBalances {
   nets: Record<string, Record<string, number>>;
   settlements: Transfer[];

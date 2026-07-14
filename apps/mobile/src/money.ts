@@ -8,9 +8,7 @@ export function formatMoney(amountMinor: number, currency: string): string {
   const symbol = SYMBOLS[currency] ?? '';
   const sign = amountMinor < 0 ? '-' : '';
   const abs = Math.abs(amountMinor);
-  const major = ZERO_DECIMAL.has(currency)
-    ? String(abs)
-    : (abs / 100).toFixed(2);
+  const major = ZERO_DECIMAL.has(currency) ? String(abs) : (abs / 100).toFixed(2);
   const suffix = symbol ? '' : ` ${currency}`;
   return `${sign}${symbol}${major}${suffix}`;
 }

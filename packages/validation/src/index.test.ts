@@ -33,8 +33,12 @@ describe('validation', () => {
   });
 
   it('parses valid auth claims and rejects bad email', () => {
-    expect(authClaimsSchema.safeParse({ sub: 'auth0|1', email: 'a@b.com', name: 'A' }).success).toBe(true);
-    expect(authClaimsSchema.safeParse({ sub: 'auth0|1', email: 'not-an-email' }).success).toBe(false);
+    expect(
+      authClaimsSchema.safeParse({ sub: 'auth0|1', email: 'a@b.com', name: 'A' }).success,
+    ).toBe(true);
+    expect(authClaimsSchema.safeParse({ sub: 'auth0|1', email: 'not-an-email' }).success).toBe(
+      false,
+    );
     expect(authClaimsSchema.safeParse({ email: 'a@b.com' }).success).toBe(false); // missing sub
   });
 
@@ -82,7 +86,9 @@ describe('expense validation (M2)', () => {
 
   it('rejects non-integer or non-positive amounts', () => {
     const split = { type: 'equal', participantMemberIds: [uid(1)] };
-    expect(createExpenseSchema.safeParse({ ...base, amountMinor: 10.5, split }).success).toBe(false);
+    expect(createExpenseSchema.safeParse({ ...base, amountMinor: 10.5, split }).success).toBe(
+      false,
+    );
     expect(createExpenseSchema.safeParse({ ...base, amountMinor: 0, split }).success).toBe(false);
     expect(createExpenseSchema.safeParse({ ...base, amountMinor: -5, split }).success).toBe(false);
   });
@@ -164,7 +170,9 @@ describe('settlement & comment validation (M3)', () => {
 
   it('rejects non-positive amounts and short idempotency keys', () => {
     expect(createSettlementSchema.safeParse({ ...base, amountMinor: 0 }).success).toBe(false);
-    expect(createSettlementSchema.safeParse({ ...base, idempotencyKey: 'short' }).success).toBe(false);
+    expect(createSettlementSchema.safeParse({ ...base, idempotencyKey: 'short' }).success).toBe(
+      false,
+    );
   });
 
   it('bounds comment length', () => {
@@ -182,7 +190,9 @@ describe('settlement & comment validation (M3)', () => {
       idempotencyKey: 'pay-key-12345678',
     };
     expect(createPaymentIntentSchema.safeParse(good).success).toBe(true);
-    expect(createPaymentIntentSchema.safeParse({ ...good, toMemberId: uid(1) }).success).toBe(false);
+    expect(createPaymentIntentSchema.safeParse({ ...good, toMemberId: uid(1) }).success).toBe(
+      false,
+    );
     expect(createPaymentIntentSchema.safeParse({ ...good, amountMinor: -1 }).success).toBe(false);
   });
 });

@@ -82,9 +82,7 @@ describe('computeNetBalances', () => {
   });
 
   it('rejects an expense whose splits do not reconcile', () => {
-    expect(() =>
-      computeNetBalances([expense(A, 1000, [[B, 999]])]),
-    ).toThrow(BalanceError);
+    expect(() => computeNetBalances([expense(A, 1000, [[B, 999]])])).toThrow(BalanceError);
   });
 
   it('rejects non-positive payments', () => {
@@ -112,9 +110,7 @@ describe('computeNetBalances', () => {
 describe('minimizeDebts', () => {
   it('settles a simple two-person debt with one transfer', () => {
     const t = minimizeDebts({ [A]: 500, [B]: -500 }, 'USD');
-    expect(t).toEqual([
-      { fromMemberId: B, toMemberId: A, amountMinor: 500, currency: 'USD' },
-    ]);
+    expect(t).toEqual([{ fromMemberId: B, toMemberId: A, amountMinor: 500, currency: 'USD' }]);
   });
 
   it('uses at most n-1 transfers', () => {
@@ -126,9 +122,7 @@ describe('minimizeDebts', () => {
   it('collapses chains (A owes B, B owes C -> A pays C)', () => {
     // A paid nothing, owes 100; B is even overall; C is owed 100.
     const t = minimizeDebts({ [A]: -100, [B]: 0, [C]: 100 }, 'USD');
-    expect(t).toEqual([
-      { fromMemberId: A, toMemberId: C, amountMinor: 100, currency: 'USD' },
-    ]);
+    expect(t).toEqual([{ fromMemberId: A, toMemberId: C, amountMinor: 100, currency: 'USD' }]);
   });
 
   it('handles a complex group correctly (conservation check)', () => {
