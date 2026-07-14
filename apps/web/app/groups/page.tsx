@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 import { api, type Group } from '../../lib/api';
+import { AppBar, Avatar } from '../../components/ui';
 
 export default function GroupsPage() {
   const { token, ready, signOut } = useAuth();
@@ -11,6 +12,7 @@ export default function GroupsPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!token) return;
@@ -32,38 +34,85 @@ export default function GroupsPage() {
 
   const create = async (): Promise<void> => {
     if (!token || !name.trim()) return;
-    await api.createGroup(token, name.trim());
-    setName('');
-    await refresh();
+    setCreating(true);
+    try {
+      await api.createGroup(token, name.trim());
+      setName('');
+      await refresh();
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
-    <main style={{ maxWidth: 640, margin: '48px auto', padding: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <h1>Your groups</h1>
-        <button onClick={signOut}>Sign out</button>
-      </div>
-      <div style={{ display: 'flex', gap: 8, margin: '12px 0' }}>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="New group name"
-          style={{ flex: 1, padding: 10 }}
-        />
-        <button onClick={() => void create()} style={{ padding: '10px 16px' }}>
-          Add
+    <>
+      <AppBar>
+        <a href="/profile" className="btn btn-ghost btn-sm">
+          Profile
+        </a>
+        <button className="btn btn-ghost btn-sm" onClick={signOut}>
+          Sign out
         </button>
-      </div>
-      {error && <p style={{ color: '#DC2626' }}>{error}</p>}
-      <ul>
-        {groups.map((g) => (
-          <li key={g.id}>
-            <a href={`/groups/${g.id}`}>{g.name}</a>{' '}
-            <span style={{ color: '#6B7280' }}>({g.defaultCurrency})</span>
-          </li>
-        ))}
-        {groups.length === 0 && <p style={{ color: '#6B7280' }}>No groups yet.</p>}
-      </ul>
-    </main>
+      </AppBar>
+
+      <main className="container">
+        <h1 style={{ fontSize: 28, marginBottom: 18 }}>Your groups</h1>
+
+        <div className="card card-pad" style={{ marginBottom: 20 }}>
+          <label className="label">Create a group</label>
+          <div className="row">
+            <input
+              className="input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void create()}
+              placeholder="e.g. Goa Trip, Flat 4B"
+            />
+            <button
+              className="btn btn-primary"
+              onClick={() => void create()}
+              disabled={!name.trim() || creating}
+            >
+              {creating ? 'Creating…' : 'Create'}
+            </button>
+          </div>
+          {error && (
+            <p className="error" style={{ marginTop: 10, marginBottom: 0 }}>
+              {error}
+            </p>
+          )}
+        </div>
+
+        {groups.length === 0 ? (
+          <div className="card empty">
+            <div className="empty-emoji">👋</div>
+            <div style={{ fontWeight: 600, color: 'var(--text)' }}>No groups yet</div>
+            <div>Create one above to start tracking shared expenses.</div>
+          </div>
+        ) : (
+          <div className="stack" style={{ gap: 10 }}>
+            {groups.map((g) => (
+              <a
+                key={g.id}
+                href={`/groups/${g.id}`}
+                className="card card-pad between"
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
+                <div className="row" style={{ gap: 13 }}>
+                  <Avatar name={g.name} size={40} />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 16 }}>{g.name}</div>
+                    <div className="faint" style={{ fontSize: 13 }}>
+                      {g.defaultCurrency}
+                    </div>
+                  </div>
+                </div>
+                <span className="faint">→</span>
+              </a>
+            ))}
+          </div>
+        )}
+      </main>
+    </>
   );
 }
