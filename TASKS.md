@@ -326,11 +326,11 @@ Run against a live API + Postgres + Redis (`docker compose up -d`, `prisma migra
 - [x] **M6-02** Add structured audit logging for sensitive actions. *(`AuditService` — audit-tagged JSON for member/settlement/export/delete events.)*
 - [x] **M6-03** Run dependency + container vulnerability scans in CI. *(`security-scan` job: pnpm audit critical-gate + high-informational, Trivy secret/misconfig.)*
 - [~] **M6-04** OWASP review pass + fix critical/high findings. *(security review run over the M6 diff; findings addressed — see PR.)*
-- [ ] **M6-05** Add OpenTelemetry tracing to API. *(deferred: needs a collector/backend to be meaningful; env-gated instrumentation is the follow-up.)*
-- [ ] **M6-06** Add tracing to each worker. *(deferred with M6-05.)*
+- [x] **M6-05** Add OpenTelemetry tracing to API. *(env-gated NodeSDK preload; OTLP for prod, console exporter for local. Verified live — HTTP/NestJS/Express/ioredis spans share a trace id.)*
+- [ ] **M6-06** Add tracing to each worker. *(same preload pattern; deferred to avoid the OTel dep footprint on all four workers until a collector is provisioned.)*
 - [~] **M6-07** Prometheus metrics + Grafana dashboards. *(metrics half done: `GET /metrics` exposes default process metrics + per-route `http_requests_total` / `http_request_duration_seconds` via a global interceptor. Verified live. Grafana dashboards need Grafana infra.)*
 - [ ] **M6-08** Alerting on error rate + latency SLOs. *(external: alertmanager/on-call infra.)*
-- [ ] **M6-09** Integrate Sentry (client + server). *(deferred: env-gated Sentry DSN; no account here.)*
+- [~] **M6-09** Integrate Sentry (client + server). *(server done: env-gated `SENTRY_DSN` init + global filter reports 5xx/unexpected errors. Client SDK is a follow-up.)*
 - [ ] **M6-10** Load test core flows; record baselines. *(external: load-test rig + staging.)*
 - [x] **M6-11** Query/index tuning for hot paths. *(hot-path indexes shipped with each migration: expense/payment/activity by group+time, split by member, unique idempotency key.)*
 - [ ] **M6-12** Offline store + sync queue on mobile. *(deferred: large standalone mobile feature.)*
