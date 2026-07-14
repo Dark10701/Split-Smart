@@ -16,6 +16,7 @@ import { createPaymentIntentSchema } from '@splitsmart/validation';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GroupMembershipGuard } from '../groups/group-membership.guard';
 import { CurrentMembership, type Membership } from '../groups/membership.decorator';
+import { SkipRateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { PaymentsService, type IntentResult } from './payments.service';
 
 type Validatable<T> = {
@@ -61,6 +62,7 @@ export class PaymentsController {
    */
   @Post('payments/webhook')
   @HttpCode(200)
+  @SkipRateLimit()
   async webhook(
     @Req() req: Request & { rawBody?: string },
     @Headers('stripe-signature') signature: string | undefined,
