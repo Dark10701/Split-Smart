@@ -39,19 +39,49 @@ export default function JoinPage() {
 
   return (
     <AppShell title="Join group" back="/groups">
-      <div className="card empty">
-        {status === 'joining' && <div>Joining group…</div>}
+      <div
+        className="card empty"
+        style={{
+          marginTop: 40,
+          boxShadow:
+            status === 'done'
+              ? '0 0 30px rgba(102,187,106,0.22)'
+              : status === 'error'
+                ? '0 0 30px rgba(239,83,80,0.2)'
+                : 'var(--glow)',
+        }}
+      >
+        {status === 'joining' && (
+          <>
+            <div className="empty-emoji" style={{ animation: 'pulse 1.3s ease-in-out infinite' }}>
+              🔗
+            </div>
+            <div style={{ color: 'var(--text)', fontWeight: 600 }}>Joining group…</div>
+          </>
+        )}
         {status === 'done' && (
           <>
-            <div className="empty-emoji">✅</div>
-            <div>You&apos;re in! Redirecting…</div>
+            <div
+              className="empty-emoji"
+              style={{
+                background: 'var(--positive-soft)',
+                animation: 'glow 1.6s ease-in-out infinite',
+              }}
+            >
+              ✅
+            </div>
+            <div style={{ color: 'var(--text)', fontWeight: 600 }}>
+              You&apos;re in! Redirecting…
+            </div>
           </>
         )}
         {status === 'error' && (
           <>
-            <div className="empty-emoji">😕</div>
+            <div className="empty-emoji" style={{ background: 'var(--negative-soft)' }}>
+              😕
+            </div>
             <div style={{ color: 'var(--text)', fontWeight: 600 }}>{message}</div>
-            <a href="/groups" className="btn btn-ghost btn-sm" style={{ marginTop: 12 }}>
+            <a href="/groups" className="btn btn-ghost btn-sm" style={{ marginTop: 14 }}>
               Go to your groups
             </a>
           </>

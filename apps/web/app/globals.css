@@ -1,65 +1,64 @@
-/* SplitSmart — Google Pay-inspired app theme. Mobile-first, phone-framed. */
+/* SplitSmart — Google Pay dark theme. Premium fintech, phone-framed.
+   Dark is the default; a manual toggle switches to light via [data-theme]. */
 
-:root {
-  /* Google / GPay palette */
-  --blue: #1a73e8;
-  --blue-hover: #1765cc;
-  --blue-soft: #e8f0fe;
-  --green: #1e8e3e;
-  --green-soft: #e6f4ea;
-  --red: #d93025;
-  --red-soft: #fce8e6;
-  --yellow: #f9ab00;
+:root,
+:root[data-theme='dark'] {
+  --bg: #1a1a2e;
+  --surface: #16213e;
+  --surface-2: #1e2d4d;
+  --glass: rgba(22, 33, 62, 0.85);
+  --glass-strong: rgba(22, 33, 62, 0.95);
 
-  --bg: #f1f3f4;
-  --surface: #ffffff;
-  --surface-2: #f8f9fa;
-  --border: #e3e6ea;
-  --border-strong: #dadce0;
+  --primary: #4fc3f7;
+  --primary-hover: #81d4fa;
+  --primary-soft: rgba(79, 195, 247, 0.12);
+  --on-primary: #06263a;
 
-  --text: #202124;
-  --muted: #5f6368;
-  --faint: #80868b;
+  --positive: #66bb6a;
+  --positive-soft: rgba(102, 187, 106, 0.14);
+  --negative: #ef5350;
+  --negative-soft: rgba(239, 83, 80, 0.14);
 
-  --primary: var(--blue);
-  --primary-hover: var(--blue-hover);
-  --primary-soft: var(--blue-soft);
-  --positive: var(--green);
-  --positive-soft: var(--green-soft);
-  --negative: var(--red);
-  --negative-soft: var(--red-soft);
+  --text: #e8eaf6;
+  --muted: #9e9e9e;
+  --faint: #7c7f96;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  --brand-gradient: linear-gradient(135deg, #4285f4, #34a853, #fbbc04, #ea4335);
+  --glow: 0 0 24px rgba(79, 195, 247, 0.1);
+  --glow-strong: 0 0 28px rgba(79, 195, 247, 0.28);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
 
   --radius: 20px;
   --radius-sm: 12px;
-  --shadow-sm: 0 1px 2px rgba(60, 64, 67, 0.1), 0 1px 3px rgba(60, 64, 67, 0.06);
-  --shadow-md: 0 1px 3px rgba(60, 64, 67, 0.12), 0 4px 8px rgba(60, 64, 67, 0.08);
-  --shadow-lg: 0 8px 24px rgba(60, 64, 67, 0.2);
-
   --frame: 460px;
-  --bottom-nav-h: 64px;
+  --bottom-nav-h: 66px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --blue: #8ab4f8;
-    --blue-hover: #aecbfa;
-    --blue-soft: #1e2a3d;
-    --green: #81c995;
-    --green-soft: #12251a;
-    --red: #f28b82;
-    --red-soft: #2a1613;
-    --bg: #202124;
-    --surface: #292a2d;
-    --surface-2: #303134;
-    --border: #3c4043;
-    --border-strong: #494c50;
-    --text: #e8eaed;
-    --muted: #9aa0a6;
-    --faint: #80868b;
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.5);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
-  }
+:root[data-theme='light'] {
+  --bg: #f1f3f6;
+  --surface: #ffffff;
+  --surface-2: #f6f8fc;
+  --glass: rgba(255, 255, 255, 0.85);
+  --glass-strong: rgba(255, 255, 255, 0.96);
+  --primary: #1a73e8;
+  --primary-hover: #1765cc;
+  --primary-soft: rgba(26, 115, 232, 0.1);
+  --on-primary: #ffffff;
+  --positive: #1e8e3e;
+  --positive-soft: rgba(30, 142, 62, 0.1);
+  --negative: #d93025;
+  --negative-soft: rgba(217, 48, 37, 0.1);
+  --text: #202124;
+  --muted: #5f6368;
+  --faint: #80868b;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.16);
+  --glow: 0 4px 16px rgba(60, 64, 67, 0.12);
+  --glow-strong: 0 6px 20px rgba(26, 115, 232, 0.2);
+  --shadow-lg: 0 16px 40px rgba(60, 64, 67, 0.24);
 }
 
 * {
@@ -75,21 +74,19 @@ body {
   color: var(--text);
   font-family:
     'Google Sans',
-    'Roboto',
     'Inter',
+    'Roboto',
     system-ui,
     -apple-system,
     'Segoe UI',
     sans-serif;
   font-size: 15px;
   line-height: 1.5;
+  font-weight: 400;
   -webkit-font-smoothing: antialiased;
 }
 a {
   color: var(--primary);
-  text-decoration: none;
-}
-a:hover {
   text-decoration: none;
 }
 h1,
@@ -97,32 +94,113 @@ h2,
 h3 {
   margin: 0;
   letter-spacing: -0.01em;
-  font-weight: 600;
+  font-weight: 700;
 }
 
-/* ---- App frame: a phone-width column, centered, so it reads as an app ---- */
+/* Accessible focus rings on every interactive element */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Thin, subtle dark scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---- Animations ---- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+@keyframes glow {
+  0%,
+  100% {
+    box-shadow: 0 0 18px rgba(79, 195, 247, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 32px rgba(79, 195, 247, 0.4);
+  }
+}
+@keyframes shimmer {
+  from {
+    background-position: -400px 0;
+  }
+  to {
+    background-position: 400px 0;
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* ---- App frame: a phone-width column that reads as a mobile app ---- */
 .app-frame {
   max-width: var(--frame);
   margin: 0 auto;
   min-height: 100vh;
   background: var(--surface);
   position: relative;
-  box-shadow: 0 0 0 1px var(--border);
+  display: flex;
+  flex-direction: column;
 }
 @media (min-width: 500px) {
+  body {
+    padding: 16px 0;
+  }
   .app-frame {
     min-height: calc(100vh - 32px);
-    margin: 16px auto;
-    border-radius: 28px;
+    margin: 0 auto;
+    border-radius: 30px;
     overflow: hidden;
     box-shadow: var(--shadow-lg);
-  }
-  body {
-    padding: 0;
+    border: 1px solid var(--border);
   }
 }
 
-/* ---- Top bar (GPay style: title left, round avatar/actions right) ---- */
+/* ---- Top bar ---- */
 .topbar {
   position: sticky;
   top: 0;
@@ -132,7 +210,8 @@ h3 {
   justify-content: space-between;
   gap: 12px;
   padding: 14px 18px;
-  background: var(--surface);
+  background: var(--glass);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
 .topbar-title {
@@ -143,57 +222,37 @@ h3 {
   font-size: 19px;
 }
 .brand-mark {
-  width: 30px;
-  height: 30px;
   border-radius: 50%;
   display: grid;
   place-items: center;
   color: #fff;
   font-weight: 700;
+  width: 30px;
+  height: 30px;
   font-size: 15px;
-  background: conic-gradient(from 135deg, #4285f4, #1a73e8, #34a853, #fbbc04, #ea4335, #4285f4);
-}
-
-/* Legacy app-bar mapped onto the topbar look */
-.app-bar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-.app-bar-inner {
-  padding: 12px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-weight: 700;
-  font-size: 18px;
-  color: var(--text);
+  background: var(--brand-gradient);
 }
 
 .container {
+  flex: 1;
   padding: 18px 18px calc(var(--bottom-nav-h) + 28px);
+  animation: fadeIn 0.35s ease;
 }
 
-/* ---- Bottom navigation (the app-feel anchor) ---- */
+/* ---- Bottom navigation with glowing active indicator ---- */
 .bottom-nav {
   position: sticky;
   bottom: 0;
-  z-index: 20;
+  z-index: 30;
   display: flex;
-  background: var(--surface);
+  background: var(--glass);
+  backdrop-filter: blur(12px);
   border-top: 1px solid var(--border);
   height: var(--bottom-nav-h);
 }
 .nav-item {
   flex: 1;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -207,29 +266,50 @@ h3 {
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
-}
-.nav-item .nav-icon {
-  font-size: 20px;
-  line-height: 1;
+  transition: color 0.2s ease;
 }
 .nav-item.active {
   color: var(--primary);
 }
-.nav-item.active .nav-icon {
-  filter: none;
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  box-shadow: 0 0 16px rgba(79, 195, 247, 0.25);
+  animation: fadeIn 0.25s ease;
+}
+.nav-item .nav-icon {
+  position: relative;
 }
 
-/* ---- Cards ---- */
+/* ---- Cards (glassmorphism) ---- */
 .card {
-  background: var(--surface);
+  background: var(--glass);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--glow);
 }
 .card-pad {
   padding: 16px;
 }
+.card-hover {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+.card-hover:hover {
+  transform: scale(1.01);
+  border-color: var(--border-strong);
+  box-shadow: var(--glow-strong);
+}
 
-/* ---- Buttons: pill-shaped, GPay blue ---- */
+/* ---- Buttons ---- */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -237,41 +317,54 @@ h3 {
   gap: 7px;
   font: inherit;
   font-weight: 600;
-  padding: 10px 20px;
+  padding: 11px 20px;
   border-radius: 999px;
   border: 1px solid transparent;
   cursor: pointer;
   transition:
-    background 0.15s,
-    box-shadow 0.15s,
-    opacity 0.15s;
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.1s ease,
+    opacity 0.2s ease;
+}
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
 }
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 .btn-primary {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
+  box-shadow: 0 0 20px rgba(79, 195, 247, 0.22);
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--primary-hover);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 0 28px rgba(79, 195, 247, 0.4);
 }
 .btn-ghost {
   background: transparent;
-  color: var(--primary);
+  color: var(--text);
   border-color: var(--border-strong);
 }
 .btn-ghost:hover:not(:disabled) {
   background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 .btn-success {
   background: var(--positive);
-  color: #fff;
+  color: #05210a;
+  box-shadow: 0 0 20px rgba(102, 187, 106, 0.28);
 }
 .btn-success:hover:not(:disabled) {
-  filter: brightness(1.05);
+  filter: brightness(1.08);
+  box-shadow: 0 0 28px rgba(102, 187, 106, 0.44);
+}
+.btn-danger {
+  background: var(--negative);
+  color: #2a0a09;
 }
 .btn-sm {
   padding: 7px 14px;
@@ -287,13 +380,13 @@ h3 {
   width: 100%;
   font: inherit;
   color: var(--text);
-  background: var(--surface);
+  background: var(--surface-2);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   transition:
-    border-color 0.15s,
-    box-shadow 0.15s;
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 .input::placeholder {
   color: var(--faint);
@@ -315,7 +408,40 @@ h3 {
   margin-bottom: 14px;
 }
 
-/* ---- Chips / segmented ---- */
+/* Custom checkbox */
+.check {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-2);
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+  flex-shrink: 0;
+}
+.check::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  transform: scale(0);
+  transition: transform 0.12s ease;
+  background: var(--on-primary);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0, 43% 62%);
+}
+.check:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.check:checked::before {
+  transform: scale(1);
+}
+
+/* ---- Chips ---- */
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -328,29 +454,32 @@ h3 {
   padding: 8px 15px;
   border-radius: 999px;
   border: 1px solid var(--border-strong);
-  background: var(--surface);
+  background: var(--surface-2);
   color: var(--text);
   cursor: pointer;
   transition:
-    background 0.15s,
-    border-color 0.15s,
-    color 0.15s;
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 .chip:hover {
-  background: var(--surface-2);
+  border-color: var(--primary);
 }
 .chip.active {
   background: var(--primary-soft);
   border-color: var(--primary);
   color: var(--primary);
+  box-shadow: 0 0 14px rgba(79, 195, 247, 0.22);
 }
 
-/* ---- Tabs (GPay pill segmented) ---- */
+/* ---- Tabs (segmented pill) ---- */
 .tabs {
   display: flex;
   gap: 6px;
   padding: 4px;
   background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 999px;
 }
 .tab {
@@ -365,13 +494,14 @@ h3 {
   border-radius: 999px;
   cursor: pointer;
   transition:
-    background 0.15s,
-    color 0.15s;
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 .tab.active {
-  background: var(--surface);
+  background: var(--primary-soft);
   color: var(--primary);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 0 14px rgba(79, 195, 247, 0.2);
 }
 
 /* ---- Misc ---- */
@@ -403,7 +533,7 @@ h3 {
 }
 .amount {
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.01em;
 }
 .pos {
@@ -426,15 +556,31 @@ h3 {
   align-items: center;
   gap: 5px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 3px 10px;
   border-radius: 999px;
   background: var(--surface-2);
   color: var(--muted);
+  border: 1px solid var(--border);
 }
 .badge-primary {
   background: var(--primary-soft);
   color: var(--primary);
+  border-color: transparent;
+}
+.pill-pos {
+  background: var(--positive-soft);
+  color: var(--positive);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+.pill-neg {
+  background: var(--negative-soft);
+  color: var(--negative);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-weight: 700;
 }
 
 .list-item {
@@ -450,15 +596,15 @@ h3 {
 }
 
 .avatar {
-  width: 40px;
-  height: 40px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-weight: 600;
-  font-size: 15px;
+  font-weight: 700;
   color: #fff;
   flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  font-size: 15px;
 }
 
 .empty {
@@ -467,8 +613,15 @@ h3 {
   color: var(--muted);
 }
 .empty-emoji {
-  font-size: 40px;
-  margin-bottom: 10px;
+  font-size: 42px;
+  margin-bottom: 12px;
+  display: inline-grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  margin-inline: auto;
 }
 
 .divider {
@@ -477,7 +630,6 @@ h3 {
   border: none;
   margin: 16px 0;
 }
-
 .section-title {
   font-size: 12px;
   font-weight: 700;
@@ -487,18 +639,43 @@ h3 {
   margin-bottom: 10px;
 }
 
-/* ---- Modal: bottom sheet on the app frame ---- */
+/* ---- Skeleton loading (shimmer) ---- */
+.skeleton {
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    rgba(255, 255, 255, 0.06) 37%,
+    var(--surface-2) 63%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+.skeleton-row {
+  height: 64px;
+  margin-bottom: 10px;
+}
+.skeleton-line {
+  height: 12px;
+  margin-bottom: 8px;
+}
+
+/* ---- Modal: glass bottom sheet ---- */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(32, 33, 36, 0.5);
+  background: rgba(10, 12, 26, 0.6);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
   z-index: 50;
+  animation: fadeIn 0.2s ease;
 }
 .modal {
-  background: var(--surface);
+  background: var(--glass-strong);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-strong);
   border-radius: 24px 24px 0 0;
   box-shadow: var(--shadow-lg);
   width: 100%;
@@ -506,6 +683,7 @@ h3 {
   max-height: 92vh;
   overflow-y: auto;
   padding: 20px 18px 28px;
+  animation: slideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1);
 }
 @media (min-width: 500px) {
   .modal-overlay {
@@ -514,24 +692,61 @@ h3 {
   .modal {
     border-radius: 24px;
     max-height: 88vh;
+    animation: fadeIn 0.2s ease;
   }
 }
 
 /* Floating action button */
 .fab {
-  position: sticky;
-  bottom: calc(var(--bottom-nav-h) + 16px);
-  margin-left: auto;
+  position: fixed;
+  bottom: calc(var(--bottom-nav-h) + 18px);
+  right: max(18px, calc(50vw - var(--frame) / 2 + 18px));
+  z-index: 40;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 14px 22px;
+  padding: 15px 22px;
   border-radius: 999px;
   border: none;
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   font: inherit;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 6px 24px rgba(79, 195, 247, 0.4);
+  transition: transform 0.15s ease;
+}
+.fab:active {
+  transform: scale(0.96);
+}
+
+/* Theme toggle switch */
+.switch {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+.switch[data-on='true'] {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+}
+.switch[data-on='true']::after {
+  transform: translateX(20px);
 }

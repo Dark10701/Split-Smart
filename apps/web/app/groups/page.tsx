@@ -4,23 +4,28 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 import { api, type Group } from '../../lib/api';
-import { AppShell, Avatar } from '../../components/ui';
+import { AppShell, Avatar, SkeletonList, ErrorState } from '../../components/ui';
 
 export default function GroupsPage() {
   const { token, ready, signOut } = useAuth();
   const router = useRouter();
   const [groups, setGroups] = useState<Group[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [name, setName] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!token) return;
+    setLoading(true);
     try {
       setGroups(await api.listGroups(token));
-      setError(null);
+      setLoadError(false);
     } catch {
-      setError('Could not load groups');
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
   }, [token]);
 
@@ -34,11 +39,14 @@ export default function GroupsPage() {
 
   const create = async (): Promise<void> => {
     if (!token || !name.trim()) return;
+    setCreateError(null);
     setCreating(true);
     try {
       await api.createGroup(token, name.trim());
       setName('');
       await refresh();
+    } catch {
+      setCreateError('Could not create the group. Is the API running?');
     } finally {
       setCreating(false);
     }
@@ -54,12 +62,20 @@ export default function GroupsPage() {
         </button>
       }
     >
-      <h1 style={{ fontSize: 24, marginBottom: 16 }}>Your groups</h1>
+      <div className="between" style={{ marginBottom: 16 }}>
+        <h1 style={{ fontSize: 24 }}>Your groups</h1>
+        {!loading && !loadError && groups.length > 0 && (
+          <span className="badge badge-primary">{groups.length}</span>
+        )}
+      </div>
 
       <div className="card card-pad" style={{ marginBottom: 18 }}>
-        <label className="label">Create a group</label>
+        <label className="label" htmlFor="new-group">
+          Create a group
+        </label>
         <div className="row">
           <input
+            id="new-group"
             className="input"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -74,18 +90,22 @@ export default function GroupsPage() {
             {creating ? 'Creating…' : 'Create'}
           </button>
         </div>
-        {error && (
+        {createError && (
           <p className="error" style={{ marginTop: 10, marginBottom: 0 }}>
-            {error}
+            {createError}
           </p>
         )}
       </div>
 
-      {groups.length === 0 ? (
+      {loading ? (
+        <SkeletonList rows={3} />
+      ) : loadError ? (
+        <ErrorState message="Could not load your groups" onRetry={() => void refresh()} />
+      ) : groups.length === 0 ? (
         <div className="card empty">
           <div className="empty-emoji">👋</div>
           <div style={{ fontWeight: 600, color: 'var(--text)' }}>No groups yet</div>
-          <div>Create one above to start tracking shared expenses.</div>
+          <div>Create one above to start splitting expenses with friends.</div>
         </div>
       ) : (
         <div className="stack" style={{ gap: 10 }}>
@@ -93,19 +113,21 @@ export default function GroupsPage() {
             <a
               key={g.id}
               href={`/groups/${g.id}`}
-              className="card card-pad between"
+              className="card card-pad card-hover between"
               style={{ textDecoration: 'none', color: 'inherit' }}
             >
               <div className="row" style={{ gap: 13 }}>
-                <Avatar name={g.name} size={40} />
+                <Avatar name={g.name} size={44} />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16 }}>{g.name}</div>
-                  <div className="faint" style={{ fontSize: 13 }}>
+                  <span className="badge" style={{ marginTop: 2 }}>
                     {g.defaultCurrency}
-                  </div>
+                  </span>
                 </div>
               </div>
-              <span className="faint">→</span>
+              <span className="faint" aria-hidden>
+                →
+              </span>
             </a>
           ))}
         </div>
