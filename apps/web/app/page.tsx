@@ -16,7 +16,6 @@ export default function Home() {
             fontSize: 38,
             margin: '0 auto 24px',
             animation: 'float 4s ease-in-out infinite',
-            boxShadow: '0 0 40px rgba(79, 195, 247, 0.35)',
           }}
           aria-hidden
         >

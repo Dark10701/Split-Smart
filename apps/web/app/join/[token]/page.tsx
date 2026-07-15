@@ -39,18 +39,7 @@ export default function JoinPage() {
 
   return (
     <AppShell title="Join group" back="/groups">
-      <div
-        className="card empty"
-        style={{
-          marginTop: 40,
-          boxShadow:
-            status === 'done'
-              ? '0 0 30px rgba(102,187,106,0.22)'
-              : status === 'error'
-                ? '0 0 30px rgba(239,83,80,0.2)'
-                : 'var(--glow)',
-        }}
-      >
+      <div className="card empty" style={{ marginTop: 40 }}>
         {status === 'joining' && (
           <>
             <div className="empty-emoji" style={{ animation: 'pulse 1.3s ease-in-out infinite' }}>
@@ -61,13 +50,7 @@ export default function JoinPage() {
         )}
         {status === 'done' && (
           <>
-            <div
-              className="empty-emoji"
-              style={{
-                background: 'var(--positive-soft)',
-                animation: 'glow 1.6s ease-in-out infinite',
-              }}
-            >
+            <div className="empty-emoji" style={{ background: 'var(--positive-soft)' }}>
               ✅
             </div>
             <div style={{ color: 'var(--text)', fontWeight: 600 }}>

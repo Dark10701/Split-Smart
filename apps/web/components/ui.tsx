@@ -22,7 +22,7 @@ export function SkeletonList({ rows = 4 }: { rows?: number }) {
 /** Error card with a retry action, used when a fetch fails. */
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="card empty" role="alert" style={{ boxShadow: '0 0 24px rgba(239,83,80,0.16)' }}>
+    <div className="card empty" role="alert">
       <div className="empty-emoji" style={{ background: 'var(--negative-soft)' }}>
         ⚠️
       </div>
