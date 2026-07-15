@@ -4,12 +4,14 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 import { api, ApiError, type Me } from '../../lib/api';
-import { AppShell, Avatar } from '../../components/ui';
+import { AppShell, Avatar, SkeletonList, ErrorState, ThemeToggle } from '../../components/ui';
 
 export default function ProfilePage() {
-  const { token, ready } = useAuth();
+  const { token, ready, signOut } = useAuth();
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [name, setName] = useState('');
   const [upi, setUpi] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
@@ -18,10 +20,18 @@ export default function ProfilePage() {
 
   const load = useCallback(async () => {
     if (!token) return;
-    const profile = await api.me(token);
-    setMe(profile);
-    setName(profile.name);
-    setUpi(profile.upiId ?? '');
+    setLoading(true);
+    try {
+      const profile = await api.me(token);
+      setMe(profile);
+      setName(profile.name);
+      setUpi(profile.upiId ?? '');
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [token]);
 
   useEffect(() => {
@@ -71,14 +81,19 @@ export default function ProfilePage() {
     <AppShell title="Profile" active="profile">
       <h1 style={{ fontSize: 24, marginBottom: 16 }}>Your profile</h1>
 
-      {!me ? (
-        <div className="card empty">Loading…</div>
-      ) : (
+      {loading ? (
+        <SkeletonList rows={3} />
+      ) : loadError ? (
+        <ErrorState message="Could not load your profile" onRetry={() => void load()} />
+      ) : me ? (
         <div className="card card-pad">
-          <div className="row" style={{ gap: 14, marginBottom: 20 }}>
-            <Avatar name={me.name} size={48} />
+          <div
+            className="row"
+            style={{ gap: 14, marginBottom: 20, flexDirection: 'column', textAlign: 'center' }}
+          >
+            <Avatar name={me.name} size={72} />
             <div>
-              <div style={{ fontWeight: 700, fontSize: 17 }}>{me.name}</div>
+              <div style={{ fontWeight: 700, fontSize: 19 }}>{me.name}</div>
               <div className="muted" style={{ fontSize: 14 }}>
                 {me.email}
               </div>
@@ -126,8 +141,22 @@ export default function ProfilePage() {
           >
             {saving ? 'Saving…' : 'Save changes'}
           </button>
+
+          <hr className="divider" />
+          <div className="between">
+            <div>
+              <div style={{ fontWeight: 600 }}>Dark mode</div>
+              <div className="faint" style={{ fontSize: 13 }}>
+                Switch between the dark and light theme
+              </div>
+            </div>
+            <ThemeToggle />
+          </div>
+          <button className="btn btn-ghost btn-block" onClick={signOut} style={{ marginTop: 16 }}>
+            Sign out
+          </button>
         </div>
-      )}
+      ) : null}
     </AppShell>
   );
 }

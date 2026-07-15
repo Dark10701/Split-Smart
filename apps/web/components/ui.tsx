@@ -1,7 +1,72 @@
 'use client';
 
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { avatarFor } from '../lib/api';
+
+/** Shimmer placeholder for loading states. */
+export function Skeleton({ className = '', style }: { className?: string; style?: CSSProperties }) {
+  return <div className={`skeleton ${className}`} style={style} aria-hidden />;
+}
+
+/** A card of shimmer rows, used while a list is loading. */
+export function SkeletonList({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="card card-pad" aria-busy="true" aria-label="Loading">
+      {Array.from({ length: rows }).map((_, i) => (
+        <Skeleton key={i} className="skeleton-row" />
+      ))}
+    </div>
+  );
+}
+
+/** Error card with a retry action, used when a fetch fails. */
+export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div className="card empty" role="alert" style={{ boxShadow: '0 0 24px rgba(239,83,80,0.16)' }}>
+      <div className="empty-emoji" style={{ background: 'var(--negative-soft)' }}>
+        ⚠️
+      </div>
+      <div style={{ fontWeight: 600, color: 'var(--text)' }}>{message}</div>
+      <div className="faint" style={{ fontSize: 13, marginTop: 4 }}>
+        Check that the API is running, then try again.
+      </div>
+      {onRetry && (
+        <button className="btn btn-ghost btn-sm" style={{ marginTop: 14 }} onClick={onRetry}>
+          Retry
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Dark/light theme toggle switch, persisted to localStorage. */
+export function ThemeToggle() {
+  const [dark, setDark] = useState(true);
+  useEffect(() => {
+    setDark((document.documentElement.dataset.theme ?? 'dark') !== 'light');
+  }, []);
+  const toggle = (): void => {
+    const next = dark ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem('theme', next);
+    } catch {
+      /* ignore */
+    }
+    setDark(!dark);
+  };
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={dark}
+      aria-label="Dark mode"
+      className="switch"
+      data-on={dark ? 'true' : 'false'}
+      onClick={toggle}
+    />
+  );
+}
 
 /** Colored circular initials avatar for a member/person (decorative). */
 export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
@@ -157,5 +222,36 @@ export function Modal({
         {children}
       </div>
     </div>
+  );
+}
+
+/** Confirmation dialog for destructive actions (e.g. deleting an expense). */
+export function ConfirmDialog({
+  title,
+  message,
+  confirmLabel = 'Delete',
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Modal title={title} onClose={onCancel}>
+      <p className="muted" style={{ marginTop: 0 }}>
+        {message}
+      </p>
+      <div className="row" style={{ marginTop: 16 }}>
+        <button className="btn btn-ghost btn-block" onClick={onCancel}>
+          Cancel
+        </button>
+        <button className="btn btn-danger btn-block" onClick={onConfirm}>
+          {confirmLabel}
+        </button>
+      </div>
+    </Modal>
   );
 }

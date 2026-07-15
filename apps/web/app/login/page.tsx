@@ -17,19 +17,28 @@ export default function LoginPage() {
 
   return (
     <div className="app-frame">
-      <main className="container" style={{ paddingTop: 64 }}>
+      <main className="container" style={{ paddingTop: 24 }}>
+        <a href="/" className="faint" style={{ fontSize: 14 }}>
+          ← Back
+        </a>
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            marginBottom: 24,
+            margin: '40px 0 24px',
           }}
         >
           <span
             className="brand-mark"
             aria-hidden
-            style={{ width: 56, height: 56, fontSize: 26, marginBottom: 12 }}
+            style={{
+              width: 64,
+              height: 64,
+              fontSize: 30,
+              marginBottom: 14,
+              animation: 'float 4s ease-in-out infinite',
+            }}
           >
             S
           </span>

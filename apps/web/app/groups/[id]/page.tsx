@@ -15,7 +15,14 @@ import {
   type Transfer,
   type Comment,
 } from '../../../lib/api';
-import { AppShell, Avatar, Modal } from '../../../components/ui';
+import {
+  AppShell,
+  Avatar,
+  Modal,
+  SkeletonList,
+  ErrorState,
+  ConfirmDialog,
+} from '../../../components/ui';
 import { AddExpenseModal } from '../../../components/AddExpenseModal';
 import { SettleUpModal } from '../../../components/SettleUpModal';
 
@@ -30,24 +37,37 @@ export default function GroupDetailPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [balances, setBalances] = useState<GroupBalances | null>(null);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [tab, setTab] = useState<Tab>('expenses');
   const [adding, setAdding] = useState(false);
   const [settling, setSettling] = useState<Transfer | 'blank' | null>(null);
   const [openComments, setOpenComments] = useState<Expense | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Expense | null>(null);
   const [guestName, setGuestName] = useState('');
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
-    const [g, page, bal, act] = await Promise.all([
-      api.getGroup(token, groupId),
-      api.listExpenses(token, groupId),
-      api.getBalances(token, groupId),
-      api.listActivity(token, groupId),
-    ]);
-    setGroup(g);
-    setExpenses(page.items);
-    setBalances(bal);
-    setActivity(act.items);
+    setLoading(true);
+    try {
+      const [g, page, bal, act] = await Promise.all([
+        api.getGroup(token, groupId),
+        api.listExpenses(token, groupId),
+        api.getBalances(token, groupId),
+        api.listActivity(token, groupId),
+      ]);
+      setGroup(g);
+      setExpenses(page.items);
+      setBalances(bal);
+      setActivity(act.items);
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [token, groupId]);
 
   useEffect(() => {
@@ -59,10 +79,23 @@ export default function GroupDetailPage() {
 
   const invite = async (): Promise<void> => {
     if (!token) return;
-    const { token: inv } = await api.createInvite(token, groupId);
-    const link = `${window.location.origin}/join/${inv}`;
-    await navigator.clipboard.writeText(link).catch(() => undefined);
-    alert(`Invite link copied:\n${link}`);
+    try {
+      const { token: inv } = await api.createInvite(token, groupId);
+      setInviteLink(`${window.location.origin}/join/${inv}`);
+      setCopied(false);
+    } catch {
+      setInviteLink('error');
+    }
+  };
+
+  const copyInvite = async (): Promise<void> => {
+    if (!inviteLink || inviteLink === 'error') return;
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopied(true);
+    } catch {
+      /* clipboard blocked — the link is still shown for manual copy */
+    }
   };
 
   const addGuest = async (): Promise<void> => {
@@ -72,19 +105,31 @@ export default function GroupDetailPage() {
     await load();
   };
 
-  const removeExpense = async (id: string): Promise<void> => {
-    if (!token) return;
+  const doDelete = async (): Promise<void> => {
+    if (!token || !confirmDelete) return;
+    const id = confirmDelete.id;
+    setConfirmDelete(null);
     await api.deleteExpense(token, groupId, id);
     await load();
   };
 
-  if (!group) {
+  if (loading && !group) {
     return (
       <AppShell title="Group" back="/groups">
-        <div className="card empty">Loading…</div>
+        <SkeletonList rows={5} />
       </AppShell>
     );
   }
+
+  if (loadError && !group) {
+    return (
+      <AppShell title="Group" back="/groups">
+        <ErrorState message="Could not load this group" onRetry={() => void load()} />
+      </AppShell>
+    );
+  }
+
+  if (!group) return null;
 
   return (
     <AppShell
@@ -97,17 +142,56 @@ export default function GroupDetailPage() {
       }
     >
       <>
+        {inviteLink && (
+          <div className="card card-pad" style={{ marginBottom: 16 }}>
+            <div className="between" style={{ marginBottom: 8 }}>
+              <div className="section-title" style={{ marginBottom: 0 }}>
+                Invite link
+              </div>
+              <button
+                className="faint"
+                aria-label="Dismiss"
+                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                onClick={() => setInviteLink(null)}
+              >
+                ✕
+              </button>
+            </div>
+            {inviteLink === 'error' ? (
+              <p className="error" style={{ margin: 0 }}>
+                Could not create an invite link. Is the API running?
+              </p>
+            ) : (
+              <div className="row">
+                <input className="input mono" readOnly value={inviteLink} />
+                <button className="btn btn-primary btn-sm" onClick={() => void copyInvite()}>
+                  {copied ? 'Copied ✓' : 'Copy'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="between" style={{ margin: '0 0 18px' }}>
-          <div className="row" style={{ gap: -6 }}>
+          <div className="row" style={{ gap: 0 }}>
             {group.members.slice(0, 6).map((m, i) => (
-              <span key={m.id} style={{ marginLeft: i === 0 ? 0 : -8 }}>
-                <Avatar name={memberName(group.members, m.id)} size={32} />
+              <span
+                key={m.id}
+                style={{
+                  marginLeft: i === 0 ? 0 : -8,
+                  border: '2px solid var(--surface)',
+                  borderRadius: '50%',
+                }}
+              >
+                <Avatar name={memberName(group.members, m.id)} size={34} />
               </span>
             ))}
+            {group.members.length > 6 && (
+              <span className="faint" style={{ marginLeft: 6, fontSize: 13 }}>
+                +{group.members.length - 6}
+              </span>
+            )}
           </div>
-          <button className="btn btn-primary btn-sm" onClick={() => setAdding(true)}>
-            + Add expense
-          </button>
         </div>
 
         <div className="tabs" style={{ marginBottom: 18 }} role="tablist" aria-label="Group views">
@@ -138,7 +222,7 @@ export default function GroupDetailPage() {
               group={group}
               expenses={expenses}
               onComments={setOpenComments}
-              onDelete={(id) => void removeExpense(id)}
+              onDelete={(e) => setConfirmDelete(e)}
               guestName={guestName}
               setGuestName={setGuestName}
               onAddGuest={() => void addGuest()}
@@ -149,6 +233,10 @@ export default function GroupDetailPage() {
           )}
           {tab === 'activity' && <ActivityTab group={group} activity={activity} />}
         </div>
+
+        <button className="fab" style={{ bottom: 24 }} onClick={() => setAdding(true)}>
+          + Add expense
+        </button>
 
         {adding && token && (
           <AddExpenseModal
@@ -181,6 +269,14 @@ export default function GroupDetailPage() {
             onClose={() => setOpenComments(null)}
           />
         )}
+        {confirmDelete && (
+          <ConfirmDialog
+            title="Delete expense?"
+            message={`"${confirmDelete.description}" (${formatMoney(confirmDelete.amountMinor, confirmDelete.currency)}) will be removed and balances recalculated. This can't be undone.`}
+            onConfirm={() => void doDelete()}
+            onCancel={() => setConfirmDelete(null)}
+          />
+        )}
       </>
     </AppShell>
   );
@@ -198,7 +294,7 @@ function ExpensesTab({
   group: GroupDetail;
   expenses: Expense[];
   onComments: (e: Expense) => void;
-  onDelete: (id: string) => void;
+  onDelete: (e: Expense) => void;
   guestName: string;
   setGuestName: (v: string) => void;
   onAddGuest: () => void;
@@ -228,7 +324,7 @@ function ExpensesTab({
         <div className="card empty">
           <div className="empty-emoji">🧾</div>
           <div style={{ fontWeight: 600, color: 'var(--text)' }}>No expenses yet</div>
-          <div>Tap “+ Add expense” to add the first one.</div>
+          <div>Tap the “+ Add expense” button to add the first one.</div>
         </div>
       ) : (
         <div className="card card-pad">
@@ -248,7 +344,7 @@ function ExpensesTab({
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div className="amount">{formatMoney(e.amountMinor, e.currency)}</div>
-                <div className="row" style={{ gap: 10, justifyContent: 'flex-end', marginTop: 2 }}>
+                <div className="row" style={{ gap: 12, justifyContent: 'flex-end', marginTop: 4 }}>
                   <button
                     className="faint"
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }}
@@ -259,7 +355,7 @@ function ExpensesTab({
                   <button
                     className="neg"
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }}
-                    onClick={() => onDelete(e.id)}
+                    onClick={() => onDelete(e)}
                   >
                     Delete
                   </button>
@@ -282,8 +378,9 @@ function BalancesTab({
   balances: GroupBalances | null;
   onSettle: (t: Transfer | 'blank') => void;
 }) {
-  if (!balances) return <div className="card empty">Loading…</div>;
-  const nets = balances.nets.INR ?? {};
+  if (!balances) return <SkeletonList rows={3} />;
+  const currency = group.defaultCurrency;
+  const nets = balances.nets[currency] ?? {};
   const settlements = balances.settlements;
 
   return (
@@ -298,10 +395,14 @@ function BalancesTab({
                 <Avatar name={memberName(group.members, m.id)} />
                 <span style={{ fontWeight: 600 }}>{memberName(group.members, m.id)}</span>
               </div>
-              <span className={`amount ${net > 0 ? 'pos' : net < 0 ? 'neg' : 'faint'}`}>
-                {net > 0 ? 'gets back ' : net < 0 ? 'owes ' : ''}
-                {net === 0 ? 'settled' : formatMoney(Math.abs(net), 'INR')}
-              </span>
+              {net === 0 ? (
+                <span className="faint amount">settled</span>
+              ) : (
+                <span className={net > 0 ? 'pill-pos amount' : 'pill-neg amount'}>
+                  {net > 0 ? 'gets ' : 'owes '}
+                  {formatMoney(Math.abs(net), currency)}
+                </span>
+              )}
             </div>
           );
         })}
@@ -318,7 +419,9 @@ function BalancesTab({
         </div>
         {settlements.length === 0 ? (
           <div className="empty" style={{ padding: '24px 0' }}>
-            <div className="empty-emoji">🎉</div>
+            <div className="empty-emoji" style={{ background: 'var(--positive-soft)' }}>
+              🎉
+            </div>
             <div>All settled up</div>
           </div>
         ) : (
@@ -326,12 +429,14 @@ function BalancesTab({
             const vpa = memberUpi(group.members, t.toMemberId);
             return (
               <div key={i} className="list-item">
-                <div className="row" style={{ gap: 10 }}>
-                  <Avatar name={memberName(group.members, t.fromMemberId)} size={30} />
-                  <span className="faint">→</span>
-                  <Avatar name={memberName(group.members, t.toMemberId)} size={30} />
+                <div className="row" style={{ gap: 8 }}>
+                  <Avatar name={memberName(group.members, t.fromMemberId)} size={32} />
+                  <span className="faint" aria-hidden>
+                    →
+                  </span>
+                  <Avatar name={memberName(group.members, t.toMemberId)} size={32} />
                   <div>
-                    <div>
+                    <div style={{ fontSize: 14 }}>
                       <strong>{memberName(group.members, t.fromMemberId)}</strong> →{' '}
                       <strong>{memberName(group.members, t.toMemberId)}</strong>
                     </div>
@@ -342,7 +447,7 @@ function BalancesTab({
                     )}
                   </div>
                 </div>
-                <div className="row" style={{ gap: 12 }}>
+                <div className="row" style={{ gap: 10 }}>
                   <span className="amount">{formatMoney(t.amountMinor, t.currency)}</span>
                   <button className="btn btn-success btn-sm" onClick={() => onSettle(t)}>
                     Settle
@@ -380,7 +485,6 @@ function ActivityTab({ group, activity }: { group: GroupDetail; activity: Activi
           </div>
         </div>
       ))}
-      {/* group kept for future actor attribution */}
       <span style={{ display: 'none' }}>{group.id}</span>
     </div>
   );
@@ -399,9 +503,16 @@ function CommentsModal({
 }) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [body, setBody] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
 
   const load = useCallback(async () => {
-    setComments(await api.listComments(token, group.id, expense.id));
+    try {
+      setComments(await api.listComments(token, group.id, expense.id));
+      setError(null);
+    } catch {
+      setError('Could not load comments');
+    }
   }, [token, group.id, expense.id]);
   useEffect(() => {
     void load();
@@ -409,9 +520,16 @@ function CommentsModal({
 
   const send = async (): Promise<void> => {
     if (!body.trim()) return;
-    await api.addComment(token, group.id, expense.id, body.trim());
-    setBody('');
-    await load();
+    setSending(true);
+    try {
+      await api.addComment(token, group.id, expense.id, body.trim());
+      setBody('');
+      await load();
+    } catch {
+      setError('Could not post your comment');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -420,9 +538,13 @@ function CommentsModal({
         {formatMoney(expense.amountMinor, expense.currency)}
       </div>
       <div className="stack" style={{ gap: 8, marginBottom: 14 }}>
-        {comments.length === 0 && <p className="faint">No comments yet.</p>}
+        {comments.length === 0 && !error && <p className="faint">No comments yet.</p>}
         {comments.map((c) => (
-          <div key={c.id} className="card card-pad" style={{ boxShadow: 'none', padding: 12 }}>
+          <div
+            key={c.id}
+            className="card card-pad"
+            style={{ boxShadow: 'none', padding: 12, background: 'var(--surface-2)' }}
+          >
             <div>{c.body}</div>
             <div className="faint" style={{ fontSize: 11, marginTop: 3 }}>
               {new Date(c.createdAt).toLocaleString()}
@@ -430,6 +552,7 @@ function CommentsModal({
           </div>
         ))}
       </div>
+      {error && <p className="error">{error}</p>}
       <div className="row">
         <input
           className="input"
@@ -438,7 +561,11 @@ function CommentsModal({
           onChange={(e) => setBody(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && void send()}
         />
-        <button className="btn btn-primary" onClick={() => void send()} disabled={!body.trim()}>
+        <button
+          className="btn btn-primary"
+          onClick={() => void send()}
+          disabled={!body.trim() || sending}
+        >
           Send
         </button>
       </div>

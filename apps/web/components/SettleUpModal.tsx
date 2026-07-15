@@ -37,6 +37,7 @@ export function SettleUpModal({
   const [method, setMethod] = useState<'cash' | 'upi' | 'offline'>('cash');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [upiOpened, setUpiOpened] = useState(false);
 
   const currency = suggested?.currency ?? group.defaultCurrency;
   // UPI links are INR-only (cu=INR, paise): hide for any non-INR settlement.
@@ -54,7 +55,16 @@ export function SettleUpModal({
       amountPaise: amountMinor,
       note: `SplitSmart · ${group.name}`,
     });
-    window.location.href = uri;
+    // Hand off to the UPI app without unloading the SPA. If no handler exists
+    // (e.g. desktop), the click is a no-op and the user stays here to record
+    // the payment manually — nothing gets stranded.
+    const a = document.createElement('a');
+    a.href = uri;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setUpiOpened(true);
   };
 
   const submit = async (): Promise<void> => {
@@ -156,6 +166,11 @@ export function SettleUpModal({
           Pay {memberName(members, to)} via UPI ({payeeVpa})
         </button>
       )}
+      {upiOpened && (
+        <p className="success-text" style={{ marginTop: 0 }}>
+          Opened your UPI app — once you&apos;ve paid, tap “Record payment” below to log it.
+        </p>
+      )}
       {!payeeVpa && currency === 'INR' && to !== from && (
         <p className="faint" style={{ fontSize: 13 }}>
           {memberName(members, to)} hasn&apos;t added a UPI ID — settle in cash, or ask them to add
@@ -164,11 +179,24 @@ export function SettleUpModal({
       )}
 
       {suggested && (
-        <p className="muted" style={{ fontSize: 13 }}>
-          Suggested: {memberName(members, suggested.fromMemberId)} →{' '}
-          {memberName(members, suggested.toMemberId)}{' '}
-          {formatMoney(suggested.amountMinor, suggested.currency)}
-        </p>
+        <div
+          className="card card-pad"
+          style={{
+            background: 'var(--primary-soft)',
+            border: 'none',
+            boxShadow: 'none',
+            marginBottom: 12,
+          }}
+        >
+          <div className="faint" style={{ fontSize: 12 }}>
+            Suggested
+          </div>
+          <div style={{ fontWeight: 600 }}>
+            {memberName(members, suggested.fromMemberId)} →{' '}
+            {memberName(members, suggested.toMemberId)}{' '}
+            <span className="amount">{formatMoney(suggested.amountMinor, suggested.currency)}</span>
+          </div>
+        </div>
       )}
       {error && <p className="error">{error}</p>}
       <button

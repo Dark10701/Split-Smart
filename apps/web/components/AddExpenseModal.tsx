@@ -237,8 +237,13 @@ export function AddExpenseModal({
               const on = participants.has(m.id);
               return (
                 <div key={m.id} className="between">
-                  <label className="row" style={{ gap: 9, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={on} onChange={() => toggle(m.id)} />
+                  <label className="row" style={{ gap: 10, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      className="check"
+                      checked={on}
+                      onChange={() => toggle(m.id)}
+                    />
                     {memberName(members, m.id)}
                   </label>
                   {on && method !== 'equal' && (
