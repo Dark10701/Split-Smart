@@ -8,9 +8,10 @@
   --surface-2: #22262e;
   --surface-3: #2b303a;
 
-  --primary: #4c8dff;
-  --primary-hover: #6ba1ff;
-  --primary-soft: rgba(76, 141, 255, 0.16);
+  /* Button blue meets WCAG AA on white text: #1668d6 = 5.3:1, hover #1a73e8 = 4.5:1. */
+  --primary: #1668d6;
+  --primary-hover: #1a73e8;
+  --primary-soft: rgba(56, 132, 240, 0.18);
   --on-primary: #ffffff;
 
   --positive: #34d399;
