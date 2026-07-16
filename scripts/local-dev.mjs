@@ -49,7 +49,7 @@ async function waitForPostgres() {
 function start(name, args) {
   const child = spawn('pnpm', args, { stdio: 'inherit', shell });
   child.on('error', (error) => console.error(`${name} failed to start: ${error.message}`));
-  return child;
+  return { name, child };
 }
 
 try {
@@ -74,14 +74,37 @@ try {
     start('web', ['--filter', '@splitsmart/web', 'dev']),
   ];
 
+  let interrupted = false;
   const stop = () => {
-    for (const service of services) service.kill('SIGINT');
+    interrupted = true;
+    for (const { child } of services) child.kill('SIGINT');
   };
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
-  await Promise.all(
-    services.map((service) => new Promise((resolve) => service.once('exit', resolve))),
+
+  // If any service dies on its own (port in use, crash on boot), treat the
+  // whole launch as failed: tear the siblings down and exit non-zero, instead
+  // of leaving a partially running stack behind a still-alive launcher.
+  const first = await Promise.race(
+    services.map(
+      ({ name, child }) =>
+        new Promise((resolve) => child.once('exit', (code) => resolve({ name, code }))),
+    ),
   );
+  // A console Ctrl+C signals the children directly, so a child exit can win
+  // the race before our own SIGINT handler runs — give it a beat before
+  // deciding whether this was a shutdown or a crash.
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  const failed = !interrupted;
+  for (const { child } of services) child.kill('SIGINT');
+  await Promise.all(
+    services.map(({ child }) =>
+      child.exitCode !== null ? null : new Promise((resolve) => child.once('exit', resolve)),
+    ),
+  );
+  if (failed) {
+    throw new Error(`${first.name} exited unexpectedly with code ${first.code ?? 'unknown'}.`);
+  }
 } catch (error) {
   console.error(`\nUnable to start SplitSmart: ${error.message}`);
   process.exitCode = 1;
