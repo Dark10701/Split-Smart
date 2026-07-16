@@ -69,10 +69,11 @@ pnpm --filter @splitsmart/web dev
 
 Then:
 
-1. Open **http://localhost:3000**.
-2. Copy one of the bearer tokens printed by Terminal A.
-3. Paste it into the **Sign in** box → you're in as that user.
-4. Create a group, add expenses, split them, and settle up. Sign in as the second
+1. Open **http://localhost:3000** → **Sign in**.
+2. With the dev auth issuer (Terminal A) running, the Sign-in screen shows
+   **Continue as Maya / Ravi** buttons — click one to sign in instantly.
+   (You can still paste a token by hand; the issuer also prints them to Terminal A.)
+3. Create a group, add expenses, split them, and settle up. Sign in as the second
    user (in a private window) to see shared membership and balances.
 
 **Health check:** http://localhost:3001/health → `{"status":"ok"}`

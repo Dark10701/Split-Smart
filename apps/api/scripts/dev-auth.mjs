@@ -48,12 +48,45 @@ const users = [
 ];
 
 http
-  .createServer((req, res) => {
-    if (req.url === '/jwks.json') {
+  .createServer(async (req, res) => {
+    // Dev-only: let the local web app fetch a token instead of hand-pasting one.
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    const url = new URL(req.url, ISSUER);
+
+    if (url.pathname === '/jwks.json') {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ keys: [jwk] }));
       return;
     }
+
+    // GET /token            → list the demo users (name + email)
+    // GET /token?user=maya  → a signed bearer token for that user
+    if (url.pathname === '/token') {
+      const wanted = url.searchParams.get('user');
+      if (!wanted) {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify(users.map(({ sub, email, name }) => ({ sub, email, name }))));
+        return;
+      }
+      const user = users.find((u) => u.sub === wanted || u.name.toLowerCase() === wanted.toLowerCase());
+      if (!user) {
+        res.writeHead(404, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: `unknown dev user "${wanted}"` }));
+        return;
+      }
+      const token = await mint(user.sub, user.email, user.name);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ token, name: user.name, email: user.email }));
+      return;
+    }
+
     res.writeHead(404);
     res.end();
   })
