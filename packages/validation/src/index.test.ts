@@ -36,13 +36,17 @@ describe('validation', () => {
   });
 
   it('parses valid auth claims and rejects bad email', () => {
-    expect(
-      authClaimsSchema.safeParse({ sub: 'auth0|1', email: 'a@b.com', name: 'A' }).success,
-    ).toBe(true);
-    expect(authClaimsSchema.safeParse({ sub: 'auth0|1', email: 'not-an-email' }).success).toBe(
-      false,
-    );
-    expect(authClaimsSchema.safeParse({ email: 'a@b.com' }).success).toBe(false); // missing sub
+    const verified = { sub: 'auth0|1', email: 'a@b.com', name: 'A', email_verified: true };
+    expect(authClaimsSchema.safeParse(verified).success).toBe(true);
+    expect(authClaimsSchema.safeParse({ ...verified, email: 'not-an-email' }).success).toBe(false);
+    expect(authClaimsSchema.safeParse({ ...verified, sub: undefined }).success).toBe(false);
+  });
+
+  it('rejects tokens without a verified email', () => {
+    const base = { sub: 'auth0|1', email: 'a@b.com', name: 'A' };
+    expect(authClaimsSchema.safeParse(base).success).toBe(false); // claim missing
+    expect(authClaimsSchema.safeParse({ ...base, email_verified: false }).success).toBe(false);
+    expect(authClaimsSchema.safeParse({ ...base, email_verified: true }).success).toBe(true);
   });
 
   it('updateMe requires at least one field and validates currency', () => {

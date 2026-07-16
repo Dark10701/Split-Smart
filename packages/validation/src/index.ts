@@ -14,11 +14,14 @@ export const moneySchema = z.object({
 
 export const splitTypeSchema = z.enum(['equal', 'exact', 'percentage', 'shares', 'itemized']);
 
-/** Verified OIDC token claims we rely on to resolve an internal user. */
+/** Verified OIDC token claims we rely on to resolve an internal user.
+ *  `email_verified` must be literally true: the issuer (dev OTP flow or a real
+ *  OIDC provider) only sets it after the user proved they own the email. */
 export const authClaimsSchema = z.object({
   sub: z.string().min(1),
   email: z.string().email(),
   name: z.string().min(1).optional(),
+  email_verified: z.literal(true),
 });
 export type AuthClaims = z.infer<typeof authClaimsSchema>;
 

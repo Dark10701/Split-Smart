@@ -359,6 +359,8 @@ Run against a live API + Postgres + Redis (`docker compose up -d`, `prisma migra
 - [x] **M6.5-07** Profile reorganized into sections (identity, account, notifications, appearance + sign out).
 - [x] **M6.5-08** One-click UPI pay on web: settle-up sheet shows a scannable `upi://pay` QR (amount + note pre-filled, for desktop) alongside the open-app deep link, plus tap-to-copy for the payee VPA (modal + balances rows).
 - [x] **M6.5-09** Easier local run: `start-splitsmart.cmd` double-click launcher; `dev:local` detects an already-running stack and exits cleanly instead of failing mid-way.
+- [x] **M6.5-10** Email verification: OTP flow in the dev issuer (`/otp/request` + code-gated `/token`, 10-min expiry, 5 attempts, consumed on use); tokens carry `email_verified: true` and the API guard rejects tokens without it (schema-tested). Two-step login UI (email → code). Demo users stay pre-verified one-click.
+- [x] **M6.5-11** UI: FAB no longer overlaps the bottom-nav Profile item (lifted above the nav wherever a bottom nav is present; verified at mobile + desktop widths). `pnpm start` alias; README leads with the one-command flow.
 
 ---
 
