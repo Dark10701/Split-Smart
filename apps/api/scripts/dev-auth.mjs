@@ -56,7 +56,10 @@ try {
 }
 
 async function mint(sub, email, name) {
-  return new SignJWT({ email, name })
+  // email_verified is only ever set on tokens minted AFTER the user proved
+  // ownership (OTP flow below) or for the pre-verified demo users — the API
+  // rejects tokens without it.
+  return new SignJWT({ email, name, email_verified: true })
     .setProtectedHeader({ alg: 'RS256', kid: 'dev-key-1' })
     .setSubject(sub)
     .setIssuer(ISSUER)
@@ -70,6 +73,42 @@ const users = [
   { sub: 'dev|maya', email: 'maya@example.in', name: 'Maya' },
   { sub: 'dev|ravi', email: 'ravi@example.in', name: 'Ravi' },
 ];
+
+// ---------------------------------------------------------------------------
+// Email verification (OTP). In production this is the OIDC provider's job —
+// locally we mimic the shape: request a code, prove ownership, get a token.
+// There is no real mail sender in dev, so the "email" is the issuer console
+// (and `devCode` in the response so the local UI can hint it).
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const OTP_TTL_MS = 10 * 60 * 1000;
+const OTP_MAX_ATTEMPTS = 5;
+/** email → { code, name, expiresAt, attempts } */
+const otps = new Map();
+
+function requestOtp(email, name) {
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  otps.set(email, { code, name, expiresAt: Date.now() + OTP_TTL_MS, attempts: 0 });
+  console.log(`\n📧 Verification code for ${email}: ${code}  (valid 10 minutes)\n`);
+  return code;
+}
+
+/** Consumes the code on success. Returns { name } on success, { error } otherwise. */
+function verifyOtp(email, code) {
+  const entry = otps.get(email);
+  if (!entry) return { error: 'No code was requested for this email — request one first.' };
+  if (Date.now() > entry.expiresAt) {
+    otps.delete(email);
+    return { error: 'That code has expired — request a new one.' };
+  }
+  entry.attempts += 1;
+  if (entry.attempts > OTP_MAX_ATTEMPTS) {
+    otps.delete(email);
+    return { error: 'Too many attempts — request a new code.' };
+  }
+  if (entry.code !== code) return { error: 'That code is not right — check and try again.' };
+  otps.delete(email);
+  return { name: entry.name };
+}
 
 http
   .createServer(async (req, res) => {
@@ -90,21 +129,40 @@ http
       return;
     }
 
-    // GET /token                          → list the demo users (name + email)
-    // GET /token?user=maya                → a signed token for a demo user
-    // GET /token?email=you@x.com&name=You → a signed token for that identity
-    //   (the API creates the account on first request — email sign-in for dev)
+    // GET /otp/request?email=&name= → generate a verification code for the
+    // email. The "email delivery" in dev is the issuer console; devCode is
+    // also returned so the local UI can hint it (never do this in production).
+    if (url.pathname === '/otp/request') {
+      const email = url.searchParams.get('email')?.trim().toLowerCase() ?? '';
+      if (!EMAIL_RE.test(email)) {
+        res.writeHead(400, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'invalid email' }));
+        return;
+      }
+      const name = url.searchParams.get('name')?.trim() || email.split('@')[0];
+      const code = requestOtp(email, name);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ sent: true, email, devCode: code }));
+      return;
+    }
+
+    // GET /token                            → list the demo users (name + email)
+    // GET /token?user=maya                   → a signed token for a demo user
+    // GET /token?email=you@x.com&code=123456 → verify the OTP, then a signed
+    //   token for that identity (the API creates the account on first request)
     if (url.pathname === '/token') {
       const wanted = url.searchParams.get('user');
       const email = url.searchParams.get('email')?.trim().toLowerCase();
 
       if (email !== undefined) {
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          res.writeHead(400, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ error: 'invalid email' }));
+        // Email sign-in requires a verified OTP code (see /otp/request).
+        const result = verifyOtp(email, url.searchParams.get('code') ?? '');
+        if (result.error) {
+          res.writeHead(401, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ error: result.error }));
           return;
         }
-        const name = url.searchParams.get('name')?.trim() || email.split('@')[0];
+        const name = result.name || email.split('@')[0];
         const token = await mint(`dev|${email}`, email, name);
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ token, name, email }));

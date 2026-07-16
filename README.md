@@ -32,25 +32,29 @@ infra/
 
 ## Run it locally
 
-### Quick start (recommended)
+### One command (this is the way)
 
-Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and Node.js 20+ first. Then, from the repo root, run:
+Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and Node.js 20+ once. After that, running SplitSmart is a single command from the repo root:
 
 ```bash
-pnpm install
-pnpm dev:local
+pnpm install   # first time only
+pnpm start     # everything: Docker, migrations, auth, API, web — one terminal
 ```
 
-On Windows you can instead **double-click `start-splitsmart.cmd`** in the repo
-root — it checks Docker, then runs the same launcher. Re-running while the app
-is already up just prints the URL instead of failing halfway.
+(`pnpm dev:local` is the same thing.) On Windows you can instead **double-click
+`start-splitsmart.cmd`** in the repo root. Re-running while the app is already
+up just prints the URL instead of failing halfway.
 
 The launcher creates missing development environment files, starts Postgres and Redis in Docker,
 waits for the database, applies Prisma migrations, and starts the local auth issuer, API, and web
-app in one terminal. Open **http://localhost:3000** and choose a demo user to sign in. Press
-`Ctrl+C` to stop the app processes; Docker services remain running for the next launch.
+app in one terminal. Open **http://localhost:3000**, sign in with your email (a 6-digit
+verification code is shown in dev — real deployments email it), or use a pre-verified demo user.
+Press `Ctrl+C` to stop the app processes; Docker services remain running for the next launch.
 
-### Manual setup
+### Manual setup (optional — you almost never need this)
+
+Only useful if you want each service in its own terminal (e.g. to restart one
+independently). Otherwise use `pnpm start` above and skip this section.
 
 From the repo root:
 
@@ -125,8 +129,9 @@ physical device.
 
 | Command | Description |
 |---|---|
+| `pnpm start` | **The one command**: Docker, database, auth, API, and web in one terminal |
 | `pnpm dev` | Run all apps/workers in dev mode (Turborepo) |
-| `pnpm dev:local` | Prepare Docker/database and run auth, API, and web in one terminal |
+| `pnpm dev:local` | Same as `pnpm start` |
 | `pnpm build` | Build all packages and apps |
 | `pnpm lint` | Lint the workspace |
 | `pnpm typecheck` | Type-check the workspace |

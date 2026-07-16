@@ -4,7 +4,12 @@ import { PrismaService } from '../database/prisma.service';
 import { defaultNotificationPrefs } from './notification-defaults';
 
 describe('UsersService', () => {
-  const claims = { sub: 'auth0|42', email: 'Maya@Example.com', name: 'Maya' };
+  const claims = {
+    sub: 'auth0|42',
+    email: 'Maya@Example.com',
+    name: 'Maya',
+    email_verified: true as const,
+  };
 
   function build(prismaMock: Partial<Record<string, unknown>>) {
     return Test.createTestingModule({

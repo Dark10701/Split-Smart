@@ -843,6 +843,17 @@ h3 {
 .fab:active {
   transform: scale(0.96);
 }
+/* On screens with the bottom nav (e.g. the groups list), sit above it so the
+   FAB never covers the Home/Profile items. The FAB is viewport-fixed, so on
+   wide screens also add the body padding that insets the phone frame. */
+.app-frame:has(.bottom-nav) .fab {
+  bottom: calc(var(--bottom-nav-h) + 16px);
+}
+@media (min-width: 500px) {
+  .app-frame:has(.bottom-nav) .fab {
+    bottom: calc(var(--bottom-nav-h) + 36px);
+  }
+}
 
 /* Theme toggle switch */
 .switch {
