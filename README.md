@@ -38,8 +38,11 @@ From the repo root:
 # 1. Install dependencies
 pnpm install
 
-# 2. Create your env file (the defaults already match the Docker services below)
+# 2. Create your env file (the defaults already match the Docker services below).
+#    The copy into apps/api is for the Prisma CLI, which only reads .env from
+#    the package it runs in (the API server itself reads the root one).
 cp .env.example .env
+cp .env.example apps/api/.env
 
 # 3. Start Postgres + Redis
 docker compose up -d
@@ -49,9 +52,9 @@ pnpm --filter @splitsmart/api prisma:generate
 pnpm --filter @splitsmart/api prisma:deploy
 ```
 
-> **Tip:** the Prisma CLI reads `DATABASE_URL` from your environment. If step 4
-> can't find it, prefix the commands (the value matches `docker-compose.yml`):
-> `DATABASE_URL="postgresql://splitsmart:splitsmart@localhost:5432/splitsmart" pnpm --filter @splitsmart/api prisma:deploy`
+> **If step 4 says `Environment variable not found: DATABASE_URL`**, you skipped
+> the `cp .env.example apps/api/.env` line above — the Prisma CLI only reads the
+> `.env` next to its own package, not the repo root.
 
 Now start the app. You need **three things running** — the auth issuer, the API, and the web client:
 
