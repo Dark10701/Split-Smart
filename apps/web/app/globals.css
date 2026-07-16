@@ -159,6 +159,75 @@ h3 {
   }
 }
 
+/* ---- Splash: app-open moment (logo pops, then the cover lifts away) ---- */
+@keyframes splashLogo {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes splashName {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes splashOut {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  animation: splashOut 0.45s ease 1.15s forwards;
+}
+.splash-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.splash .brand-mark {
+  width: 84px;
+  height: 84px;
+  font-size: 40px;
+  animation: splashLogo 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.splash-name {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  animation: splashName 0.5s ease 0.35s both;
+}
+.splash-tag {
+  color: var(--muted);
+  font-size: 13px;
+  animation: splashName 0.5s ease 0.5s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash {
+    display: none;
+  }
+}
+
 /* ---- App frame: a phone-width column that reads as a mobile app ---- */
 .app-frame {
   max-width: var(--frame);

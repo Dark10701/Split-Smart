@@ -19,7 +19,9 @@
  * Run from the repo root:  pnpm --filter @splitsmart/api dev:auth
  */
 import http from 'node:http';
-import { generateKeyPair, exportJWK, SignJWT } from 'jose';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { generateKeyPair, exportJWK, importJWK, SignJWT } from 'jose';
 
 // Dev convenience: log request-handling errors instead of dying — a crashed
 // issuer silently breaks the web app's one-click sign-in.
@@ -30,11 +32,28 @@ const PORT = 3999;
 const ISSUER = `http://localhost:${PORT}/`;
 const AUDIENCE = 'splitsmart-api';
 
-const { publicKey, privateKey } = await generateKeyPair('RS256');
-const jwk = await exportJWK(publicKey);
-jwk.kid = 'dev-key-1';
-jwk.alg = 'RS256';
-jwk.use = 'sig';
+// Persist the keypair across restarts (dev-only, gitignored). Otherwise every
+// restart mints a new key and all previously issued tokens turn into 401s —
+// the app then looks "broken" for anyone still holding a session cookie.
+const KEY_FILE = fileURLToPath(new URL('./.dev-auth-key.json', import.meta.url));
+let privateKey;
+let jwk;
+try {
+  const saved = JSON.parse(readFileSync(KEY_FILE, 'utf8'));
+  privateKey = await importJWK(saved.privateJwk, 'RS256');
+  jwk = saved.publicJwk;
+} catch {
+  const pair = await generateKeyPair('RS256', { extractable: true });
+  privateKey = pair.privateKey;
+  jwk = await exportJWK(pair.publicKey);
+  jwk.kid = 'dev-key-1';
+  jwk.alg = 'RS256';
+  jwk.use = 'sig';
+  writeFileSync(
+    KEY_FILE,
+    JSON.stringify({ privateJwk: await exportJWK(pair.privateKey), publicJwk: jwk }, null, 2),
+  );
+}
 
 async function mint(sub, email, name) {
   return new SignJWT({ email, name })

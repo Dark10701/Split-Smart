@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '../../../lib/auth';
 import {
   api,
+  ApiError,
   formatMoney,
   memberName,
   memberUpi,
@@ -65,7 +66,7 @@ function involvement(
 }
 
 export default function GroupDetailPage() {
-  const { token, ready } = useAuth();
+  const { token, ready, signOut } = useAuth();
   const router = useRouter();
   const groupId = useParams<{ id: string }>().id;
 
@@ -100,7 +101,12 @@ export default function GroupDetailPage() {
       setActivity(act.items);
       setMyMemberId(g.members.find((m) => m.userId === me.id)?.id ?? null);
       setLoadError(false);
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        signOut();
+        router.push('/login');
+        return;
+      }
       setLoadError(true);
     } finally {
       setLoading(false);

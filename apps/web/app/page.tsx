@@ -1,9 +1,18 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/auth';
 
 export default function Home() {
   const { token, ready } = useAuth();
+  const router = useRouter();
+
+  // Signed in? Open straight into the app (the splash covers the hop),
+  // the way a native app resumes — the landing page is for new visitors.
+  useEffect(() => {
+    if (ready && token) router.replace('/groups');
+  }, [ready, token, router]);
 
   return (
     <div className="app-frame">
