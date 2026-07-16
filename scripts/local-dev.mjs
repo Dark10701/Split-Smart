@@ -52,11 +52,29 @@ function start(name, args) {
   return { name, child };
 }
 
+/** True when something already answers on the given local port. */
+async function isUp(url) {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(1_500) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 try {
   if (!existsSync('node_modules')) {
     throw new Error(
       'Dependencies are not installed. Run "pnpm install" once, then run "pnpm dev:local".',
     );
+  }
+
+  // Re-running while the stack is up would fail confusingly halfway through
+  // (the running API locks Prisma's engine on Windows) — detect it up front.
+  if (await isUp('http://localhost:3001/health')) {
+    console.log('SplitSmart is already running — open http://localhost:3000');
+    console.log('(To restart it, stop the running dev terminal first.)');
+    process.exit(0);
   }
 
   ensureEnvFile('.env');

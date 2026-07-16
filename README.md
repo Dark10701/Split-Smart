@@ -41,6 +41,10 @@ pnpm install
 pnpm dev:local
 ```
 
+On Windows you can instead **double-click `start-splitsmart.cmd`** in the repo
+root — it checks Docker, then runs the same launcher. Re-running while the app
+is already up just prints the URL instead of failing halfway.
+
 The launcher creates missing development environment files, starts Postgres and Redis in Docker,
 waits for the database, applies Prisma migrations, and starts the local auth issuer, API, and web
 app in one terminal. Open **http://localhost:3000** and choose a demo user to sign in. Press

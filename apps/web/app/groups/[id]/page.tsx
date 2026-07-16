@@ -370,6 +370,37 @@ function ExpensesTab({
   );
 }
 
+/** A payee's UPI ID as a tap-to-copy control (no more manual selection). */
+function CopyVpa({ vpa }: { vpa: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(vpa);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard blocked — the id stays visible for manual copy */
+    }
+  };
+  return (
+    <button
+      className="pos"
+      onClick={() => void copy()}
+      title="Copy UPI ID"
+      style={{
+        font: 'inherit',
+        fontSize: 12,
+        background: 'none',
+        border: 'none',
+        padding: 0,
+        cursor: 'pointer',
+      }}
+    >
+      UPI: {vpa} {copied ? '✓ copied' : '⧉'}
+    </button>
+  );
+}
+
 function BalancesTab({
   group,
   balances,
@@ -452,11 +483,7 @@ function BalancesTab({
                       <strong>{memberName(group.members, t.fromMemberId)}</strong> →{' '}
                       <strong>{memberName(group.members, t.toMemberId)}</strong>
                     </div>
-                    {vpa && (
-                      <div className="pos" style={{ fontSize: 12 }}>
-                        UPI: {vpa}
-                      </div>
-                    )}
+                    {vpa && <CopyVpa vpa={vpa} />}
                   </div>
                 </div>
                 <div className="row" style={{ gap: 10 }}>
