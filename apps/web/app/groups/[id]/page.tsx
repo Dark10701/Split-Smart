@@ -28,6 +28,41 @@ import { SettleUpModal } from '../../../components/SettleUpModal';
 
 type Tab = 'expenses' | 'balances' | 'activity';
 
+/** Pick a category glyph from the description so rows read like a real ledger. */
+function categoryEmoji(description: string): string {
+  const d = description.toLowerCase();
+  const map: Array<[RegExp, string]> = [
+    [/food|dinner|lunch|breakfast|snack|shack|restaurant|cafe|coffee|pizza|meal/, '🍽️'],
+    [/grocer|super ?market|vegetable|milk|kirana/, '🛒'],
+    [/cab|uber|ola|taxi|auto|fuel|petrol|diesel|train|flight|bus|travel|trip/, '🚕'],
+    [/hotel|stay|room|airbnb|resort/, '🏨'],
+    [/movie|game|fun|party|drink|bar|beer/, '🎉'],
+    [/rent|electricity|water|wifi|internet|bill|gas/, '🧾'],
+    [/shop|amazon|flipkart|clothes|gift/, '🛍️'],
+  ];
+  for (const [re, emoji] of map) if (re.test(d)) return emoji;
+  return '🧾';
+}
+
+/** This user's involvement in one expense, for the Splitwise-style right column. */
+function involvement(
+  e: Expense,
+  myMemberId: string | null,
+): { label: string; amount: number; tone: 'pos' | 'neg' | 'muted' } {
+  if (!myMemberId) return { label: '', amount: 0, tone: 'muted' };
+  const myShare = e.splits
+    .filter((s) => s.memberId === myMemberId)
+    .reduce((sum, s) => sum + s.shareMinor, 0);
+  if (e.payerMemberId === myMemberId) {
+    const lent = e.amountMinor - myShare;
+    return lent > 0
+      ? { label: 'you lent', amount: lent, tone: 'pos' }
+      : { label: 'you paid', amount: e.amountMinor, tone: 'muted' };
+  }
+  if (myShare > 0) return { label: 'you borrowed', amount: myShare, tone: 'neg' };
+  return { label: 'not involved', amount: 0, tone: 'muted' };
+}
+
 export default function GroupDetailPage() {
   const { token, ready } = useAuth();
   const router = useRouter();
@@ -37,6 +72,7 @@ export default function GroupDetailPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [balances, setBalances] = useState<GroupBalances | null>(null);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const [myMemberId, setMyMemberId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [tab, setTab] = useState<Tab>('expenses');
@@ -44,15 +80,14 @@ export default function GroupDetailPage() {
   const [settling, setSettling] = useState<Transfer | 'blank' | null>(null);
   const [openComments, setOpenComments] = useState<Expense | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Expense | null>(null);
-  const [guestName, setGuestName] = useState('');
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [managing, setManaging] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     try {
-      const [g, page, bal, act] = await Promise.all([
+      const [me, g, page, bal, act] = await Promise.all([
+        api.me(token),
         api.getGroup(token, groupId),
         api.listExpenses(token, groupId),
         api.getBalances(token, groupId),
@@ -62,6 +97,7 @@ export default function GroupDetailPage() {
       setExpenses(page.items);
       setBalances(bal);
       setActivity(act.items);
+      setMyMemberId(g.members.find((m) => m.userId === me.id)?.id ?? null);
       setLoadError(false);
     } catch {
       setLoadError(true);
@@ -77,34 +113,6 @@ export default function GroupDetailPage() {
     void load();
   }, [load]);
 
-  const invite = async (): Promise<void> => {
-    if (!token) return;
-    try {
-      const { token: inv } = await api.createInvite(token, groupId);
-      setInviteLink(`${window.location.origin}/join/${inv}`);
-      setCopied(false);
-    } catch {
-      setInviteLink('error');
-    }
-  };
-
-  const copyInvite = async (): Promise<void> => {
-    if (!inviteLink || inviteLink === 'error') return;
-    try {
-      await navigator.clipboard.writeText(inviteLink);
-      setCopied(true);
-    } catch {
-      /* clipboard blocked — the link is still shown for manual copy */
-    }
-  };
-
-  const addGuest = async (): Promise<void> => {
-    if (!token || !guestName.trim()) return;
-    await api.addGuest(token, groupId, guestName.trim());
-    setGuestName('');
-    await load();
-  };
-
   const doDelete = async (): Promise<void> => {
     if (!token || !confirmDelete) return;
     const id = confirmDelete.id;
@@ -116,7 +124,8 @@ export default function GroupDetailPage() {
   if (loading && !group) {
     return (
       <AppShell title="Group" back="/groups">
-        <SkeletonList rows={5} />
+        <div className="skeleton" style={{ height: 100, marginBottom: 16 }} />
+        <SkeletonList rows={4} />
       </AppShell>
     );
   }
@@ -131,70 +140,61 @@ export default function GroupDetailPage() {
 
   if (!group) return null;
 
+  const currency = group.defaultCurrency;
+  const myNet = myMemberId ? (balances?.nets[currency]?.[myMemberId] ?? 0) : 0;
+
   return (
     <AppShell
       title={group.name}
       back="/groups"
       headerRight={
-        <button className="btn btn-ghost btn-sm" onClick={() => void invite()}>
-          Invite
+        <button className="btn btn-ghost btn-sm" onClick={() => setManaging(true)}>
+          People
         </button>
       }
     >
       <>
-        {inviteLink && (
-          <div className="card card-pad" style={{ marginBottom: 16 }}>
-            <div className="between" style={{ marginBottom: 8 }}>
-              <div className="section-title" style={{ marginBottom: 0 }}>
-                Invite link
-              </div>
-              <button
-                className="faint"
-                aria-label="Dismiss"
-                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-                onClick={() => setInviteLink(null)}
-              >
-                ✕
-              </button>
+        {/* Group balance summary (Splitwise-style) */}
+        <div className="hero between" style={{ alignItems: 'flex-start' }}>
+          <div>
+            <div className="hero-label">
+              {myNet === 0 ? 'In this group' : myNet > 0 ? 'You are owed' : 'You owe'}
             </div>
-            {inviteLink === 'error' ? (
-              <p className="error" style={{ margin: 0 }}>
-                Could not create an invite link. Is the API running?
-              </p>
-            ) : (
-              <div className="row">
-                <input className="input mono" readOnly value={inviteLink} />
-                <button className="btn btn-primary btn-sm" onClick={() => void copyInvite()}>
-                  {copied ? 'Copied ✓' : 'Copy'}
-                </button>
-              </div>
-            )}
+            <div className={`hero-amount ${myNet > 0 ? 'pos' : myNet < 0 ? 'neg' : ''}`}>
+              {myNet === 0 ? "You're settled up" : formatMoney(Math.abs(myNet), currency)}
+            </div>
+            <div className="row" style={{ gap: 0, marginTop: 12 }}>
+              {group.members.slice(0, 6).map((m, i) => (
+                <span
+                  key={m.id}
+                  title={memberName(group.members, m.id)}
+                  style={{
+                    marginLeft: i === 0 ? 0 : -8,
+                    border: '2px solid var(--surface)',
+                    borderRadius: '50%',
+                  }}
+                >
+                  <Avatar name={memberName(group.members, m.id)} size={30} />
+                </span>
+              ))}
+              {group.members.length > 6 && (
+                <span className="faint" style={{ marginLeft: 6, fontSize: 13 }}>
+                  +{group.members.length - 6}
+                </span>
+              )}
+            </div>
           </div>
-        )}
-
-        <div className="between" style={{ margin: '0 0 18px' }}>
-          <div className="row" style={{ gap: 0 }}>
-            {group.members.slice(0, 6).map((m, i) => (
-              <span
-                key={m.id}
-                style={{
-                  marginLeft: i === 0 ? 0 : -8,
-                  border: '2px solid var(--surface)',
-                  borderRadius: '50%',
-                }}
-              >
-                <Avatar name={memberName(group.members, m.id)} size={34} />
-              </span>
-            ))}
-            {group.members.length > 6 && (
-              <span className="faint" style={{ marginLeft: 6, fontSize: 13 }}>
-                +{group.members.length - 6}
-              </span>
-            )}
-          </div>
+          <button className="btn btn-primary btn-sm" onClick={() => setSettling('blank')}>
+            Settle up
+          </button>
         </div>
 
-        <div className="tabs" style={{ marginBottom: 18 }} role="tablist" aria-label="Group views">
+        <div
+          className="tabs"
+          style={{ margin: '18px 0' }}
+          role="tablist"
+          aria-label="Group views"
+        >
           {(['expenses', 'balances', 'activity'] as Tab[]).map((t) => (
             <button
               key={t}
@@ -221,11 +221,9 @@ export default function GroupDetailPage() {
             <ExpensesTab
               group={group}
               expenses={expenses}
+              myMemberId={myMemberId}
               onComments={setOpenComments}
               onDelete={(e) => setConfirmDelete(e)}
-              guestName={guestName}
-              setGuestName={setGuestName}
-              onAddGuest={() => void addGuest()}
             />
           )}
           {tab === 'balances' && (
@@ -234,7 +232,7 @@ export default function GroupDetailPage() {
           {tab === 'activity' && <ActivityTab group={group} activity={activity} />}
         </div>
 
-        <button className="fab" style={{ bottom: 24 }} onClick={() => setAdding(true)}>
+        <button className="fab" onClick={() => setAdding(true)}>
           + Add expense
         </button>
 
@@ -261,6 +259,14 @@ export default function GroupDetailPage() {
             }}
           />
         )}
+        {managing && token && (
+          <ManagePeopleModal
+            group={group}
+            token={token}
+            onClose={() => setManaging(false)}
+            onChanged={() => void load()}
+          />
+        )}
         {openComments && token && (
           <CommentsModal
             group={group}
@@ -285,87 +291,74 @@ export default function GroupDetailPage() {
 function ExpensesTab({
   group,
   expenses,
+  myMemberId,
   onComments,
   onDelete,
-  guestName,
-  setGuestName,
-  onAddGuest,
 }: {
   group: GroupDetail;
   expenses: Expense[];
+  myMemberId: string | null;
   onComments: (e: Expense) => void;
   onDelete: (e: Expense) => void;
-  guestName: string;
-  setGuestName: (v: string) => void;
-  onAddGuest: () => void;
 }) {
-  return (
-    <>
-      <div className="card card-pad" style={{ marginBottom: 16 }}>
-        <label className="label" htmlFor="guest-name">
-          Add a guest (no account needed)
-        </label>
-        <div className="row">
-          <input
-            id="guest-name"
-            className="input"
-            placeholder="Guest name"
-            value={guestName}
-            onChange={(e) => setGuestName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && onAddGuest()}
-          />
-          <button className="btn btn-ghost" onClick={onAddGuest} disabled={!guestName.trim()}>
-            Add
-          </button>
-        </div>
+  if (expenses.length === 0) {
+    return (
+      <div className="card empty">
+        <div className="empty-emoji">🧾</div>
+        <div style={{ fontWeight: 600, color: 'var(--text)' }}>No expenses yet</div>
+        <div>Tap “+ Add expense” to add the first one.</div>
       </div>
-
-      {expenses.length === 0 ? (
-        <div className="card empty">
-          <div className="empty-emoji">🧾</div>
-          <div style={{ fontWeight: 600, color: 'var(--text)' }}>No expenses yet</div>
-          <div>Tap the “+ Add expense” button to add the first one.</div>
-        </div>
-      ) : (
-        <div className="card card-pad">
-          {expenses.map((e) => (
-            <div key={e.id} className="list-item">
-              <div className="row" style={{ gap: 12 }}>
-                <Avatar name={memberName(group.members, e.payerMemberId)} />
-                <div>
-                  <div style={{ fontWeight: 600 }}>{e.description}</div>
-                  <div className="faint" style={{ fontSize: 13 }}>
-                    {memberName(group.members, e.payerMemberId)} paid ·{' '}
-                    <span className="badge" style={{ padding: '1px 7px' }}>
-                      {e.splitType}
-                    </span>
-                  </div>
-                </div>
+    );
+  }
+  return (
+    <div className="card card-pad">
+      {expenses.map((e) => {
+        const inv = involvement(e, myMemberId);
+        const d = new Date(e.occurredAt);
+        return (
+          <div key={e.id} className="exp-row">
+            <div className="date-cell">
+              <div className="m">{d.toLocaleString('en-US', { month: 'short' })}</div>
+              <div className="d">{d.getDate()}</div>
+            </div>
+            <span className="cat-icon" aria-hidden>
+              {categoryEmoji(e.description)}
+            </span>
+            <div className="exp-main">
+              <div className="t">{e.description}</div>
+              <div className="faint" style={{ fontSize: 13 }}>
+                {memberName(group.members, e.payerMemberId)} paid{' '}
+                {formatMoney(e.amountMinor, e.currency)}
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div className="amount">{formatMoney(e.amountMinor, e.currency)}</div>
-                <div className="row" style={{ gap: 12, justifyContent: 'flex-end', marginTop: 4 }}>
-                  <button
-                    className="faint"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }}
-                    onClick={() => onComments(e)}
-                  >
-                    💬 Comments
-                  </button>
-                  <button
-                    className="neg"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }}
-                    onClick={() => onDelete(e)}
-                  >
-                    Delete
-                  </button>
-                </div>
+              <div className="row" style={{ gap: 14, marginTop: 4 }}>
+                <button
+                  className="faint"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }}
+                  onClick={() => onComments(e)}
+                >
+                  💬 Comment
+                </button>
+                <button
+                  className="neg"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }}
+                  onClick={() => onDelete(e)}
+                >
+                  Delete
+                </button>
               </div>
             </div>
-          ))}
-        </div>
-      )}
-    </>
+            <div className="bal-side">
+              <div className="l">{inv.label}</div>
+              {inv.amount > 0 && (
+                <div className={`v ${inv.tone === 'pos' ? 'pos' : inv.tone === 'neg' ? 'neg' : ''}`}>
+                  {formatMoney(inv.amount, e.currency)}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -487,6 +480,118 @@ function ActivityTab({ group, activity }: { group: GroupDetail; activity: Activi
       ))}
       <span style={{ display: 'none' }}>{group.id}</span>
     </div>
+  );
+}
+
+/** Invite by link + add a guest, in one sheet (keeps the expense list clean). */
+function ManagePeopleModal({
+  group,
+  token,
+  onClose,
+  onChanged,
+}: {
+  group: GroupDetail;
+  token: string;
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [guestName, setGuestName] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const invite = async (): Promise<void> => {
+    setBusy(true);
+    try {
+      const { token: inv } = await api.createInvite(token, group.id);
+      setInviteLink(`${window.location.origin}/join/${inv}`);
+      setCopied(false);
+    } catch {
+      setInviteLink('error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copyInvite = async (): Promise<void> => {
+    if (!inviteLink || inviteLink === 'error') return;
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopied(true);
+    } catch {
+      /* clipboard blocked — link still shown for manual copy */
+    }
+  };
+
+  const addGuest = async (): Promise<void> => {
+    if (!guestName.trim()) return;
+    setBusy(true);
+    try {
+      await api.addGuest(token, group.id, guestName.trim());
+      setGuestName('');
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal title="People" onClose={onClose}>
+      <div className="section-title">Members ({group.members.length})</div>
+      <div className="stack" style={{ gap: 8, marginBottom: 18 }}>
+        {group.members.map((m) => (
+          <div key={m.id} className="row" style={{ gap: 10 }}>
+            <Avatar name={memberName(group.members, m.id)} size={32} />
+            <span style={{ fontWeight: 600 }}>{memberName(group.members, m.id)}</span>
+            {!m.userId && <span className="badge">guest</span>}
+          </div>
+        ))}
+      </div>
+
+      <div className="section-title">Invite by link</div>
+      {inviteLink && inviteLink !== 'error' ? (
+        <div className="row" style={{ marginBottom: 18 }}>
+          <input className="input mono" readOnly value={inviteLink} />
+          <button className="btn btn-primary btn-sm" onClick={() => void copyInvite()}>
+            {copied ? 'Copied ✓' : 'Copy'}
+          </button>
+        </div>
+      ) : (
+        <>
+          {inviteLink === 'error' && (
+            <p className="error" style={{ marginTop: 0 }}>
+              Could not create an invite link. Is the API running?
+            </p>
+          )}
+          <button
+            className="btn btn-ghost btn-block"
+            style={{ marginBottom: 18 }}
+            onClick={() => void invite()}
+            disabled={busy}
+          >
+            Create invite link
+          </button>
+        </>
+      )}
+
+      <div className="section-title">Add a guest (no account needed)</div>
+      <div className="row">
+        <input
+          className="input"
+          placeholder="Guest name"
+          value={guestName}
+          onChange={(e) => setGuestName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && void addGuest()}
+        />
+        <button
+          className="btn btn-ghost"
+          onClick={() => void addGuest()}
+          disabled={!guestName.trim() || busy}
+        >
+          Add
+        </button>
+      </div>
+    </Modal>
   );
 }
 

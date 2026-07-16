@@ -15,7 +15,6 @@ export default function Home() {
             height: 80,
             fontSize: 38,
             margin: '0 auto 24px',
-            animation: 'float 4s ease-in-out infinite',
           }}
           aria-hidden
         >

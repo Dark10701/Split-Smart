@@ -21,6 +21,11 @@
 import http from 'node:http';
 import { generateKeyPair, exportJWK, SignJWT } from 'jose';
 
+// Dev convenience: log request-handling errors instead of dying — a crashed
+// issuer silently breaks the web app's one-click sign-in.
+process.on('uncaughtException', (err) => console.error('[dev-auth] error:', err));
+process.on('unhandledRejection', (err) => console.error('[dev-auth] rejection:', err));
+
 const PORT = 3999;
 const ISSUER = `http://localhost:${PORT}/`;
 const AUDIENCE = 'splitsmart-api';
@@ -48,14 +53,59 @@ const users = [
 ];
 
 http
-  .createServer((req, res) => {
-    if (req.url === '/jwks.json') {
+  .createServer(async (req, res) => {
+    // Dev-only: let the local web app fetch a token instead of hand-pasting one.
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    const url = new URL(req.url, ISSUER);
+
+    if (url.pathname === '/jwks.json') {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ keys: [jwk] }));
       return;
     }
+
+    // GET /token            → list the demo users (name + email)
+    // GET /token?user=maya  → a signed bearer token for that user
+    if (url.pathname === '/token') {
+      const wanted = url.searchParams.get('user');
+      if (!wanted) {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify(users.map(({ sub, email, name }) => ({ sub, email, name }))));
+        return;
+      }
+      const user = users.find((u) => u.sub === wanted || u.name.toLowerCase() === wanted.toLowerCase());
+      if (!user) {
+        res.writeHead(404, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: `unknown dev user "${wanted}"` }));
+        return;
+      }
+      const token = await mint(user.sub, user.email, user.name);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ token, name: user.name, email: user.email }));
+      return;
+    }
+
     res.writeHead(404);
     res.end();
+  })
+  .on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(
+        `\nPort ${PORT} is already in use — another dev-auth is probably running.` +
+          `\nEither keep using that one, or free the port and retry:` +
+          `\n  PowerShell:  Get-NetTCPConnection -LocalPort ${PORT} | ` +
+          `ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }\n`,
+      );
+      process.exit(1);
+    }
+    throw err;
   })
   .listen(PORT, async () => {
     console.log(`\nDev auth issuer running — JWKS at ${ISSUER}jwks.json\n`);
