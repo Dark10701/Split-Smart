@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { avatarFor } from '../lib/api';
+import { BrandMark } from './BrandMark';
 
 /** Shimmer placeholder for loading states. */
 export function Skeleton({ className = '', style }: { className?: string; style?: CSSProperties }) {
@@ -170,9 +171,7 @@ export function AppShell({
               ←
             </a>
           ) : (
-            <span className="brand-mark" aria-hidden>
-              S
-            </span>
+            <BrandMark />
           )}
           {title}
         </div>

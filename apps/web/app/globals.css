@@ -277,15 +277,9 @@ h3 {
   text-overflow: ellipsis;
 }
 .brand-mark {
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  font-weight: 700;
+  display: block;
   width: 30px;
   height: 30px;
-  font-size: 15px;
-  background: var(--brand-gradient);
   flex-shrink: 0;
 }
 
