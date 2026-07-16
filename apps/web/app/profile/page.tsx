@@ -71,7 +71,12 @@ export default function ProfilePage() {
       setName(profile.name);
       setUpi(profile.upiId ?? '');
       setLoadError(false);
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        signOut();
+        router.push('/login');
+        return;
+      }
       setLoadError(true);
     } finally {
       setLoading(false);

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Providers } from './providers';
+import { Splash } from '../components/Splash';
 
 export const metadata: Metadata = {
   title: 'SplitSmart — Split expenses, settle over UPI',
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#1a1a2e',
+  themeColor: '#0f1115',
   width: 'device-width',
   initialScale: 1,
 };
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body>
+        <Splash />
         <Providers>{children}</Providers>
       </body>
     </html>

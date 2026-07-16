@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
-import { api, formatMoney, type Group } from '../../lib/api';
+import { api, ApiError, formatMoney, type Group } from '../../lib/api';
 import { AppShell, Avatar, Modal, SkeletonList, ErrorState } from '../../components/ui';
 
 /** A group plus this user's net balance in it (positive = owed to you). */
@@ -44,7 +44,12 @@ export default function GroupsPage() {
       );
       setRows(withBalances);
       setLoadError(false);
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        signOut();
+        router.push('/login');
+        return;
+      }
       setLoadError(true);
     } finally {
       setLoading(false);

@@ -56,3 +56,6 @@ Thumbs.db
 crash.log
 *.tfvars
 !*.tfvars.example
+
+# Local dev auth issuer keypair (dev-only, never commit)
+.dev-auth-key.json
