@@ -32,6 +32,22 @@ infra/
 
 ## Run it locally
 
+### Quick start (recommended)
+
+Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and Node.js 20+ first. Then, from the repo root, run:
+
+```bash
+pnpm install
+pnpm dev:local
+```
+
+The launcher creates missing development environment files, starts Postgres and Redis in Docker,
+waits for the database, applies Prisma migrations, and starts the local auth issuer, API, and web
+app in one terminal. Open **http://localhost:3000** and choose a demo user to sign in. Press
+`Ctrl+C` to stop the app processes; Docker services remain running for the next launch.
+
+### Manual setup
+
 From the repo root:
 
 ```bash
@@ -106,6 +122,7 @@ physical device.
 | Command | Description |
 |---|---|
 | `pnpm dev` | Run all apps/workers in dev mode (Turborepo) |
+| `pnpm dev:local` | Prepare Docker/database and run auth, API, and web in one terminal |
 | `pnpm build` | Build all packages and apps |
 | `pnpm lint` | Lint the workspace |
 | `pnpm typecheck` | Type-check the workspace |
@@ -113,6 +130,13 @@ physical device.
 | `pnpm format` | Format with Prettier |
 | `pnpm --filter @splitsmart/api dev:auth` | Local dev token issuer |
 | `pnpm --filter @splitsmart/api prisma:deploy` | Apply DB migrations |
+
+> **API restarting constantly / feeling flaky?** If the repo lives inside a
+> OneDrive/Dropbox-synced folder, the sync client touches files continuously and
+> retriggers the dev watchers (the API recompiles and restarts in a loop). The
+> watcher now ignores `dist/`, which removes the worst of it — but for a smooth
+> experience keep dev repos in a non-synced path (e.g. `C:\dev\split-smart`) or
+> pause syncing while developing.
 
 ## Observability (optional)
 
