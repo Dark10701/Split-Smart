@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
+import { BrandMark } from '../../components/BrandMark';
 
 const DEV_AUTH_URL = process.env.NEXT_PUBLIC_DEV_AUTH_URL ?? 'http://localhost:3999';
 
@@ -97,13 +98,7 @@ export default function LoginPage() {
             margin: '36px 0 22px',
           }}
         >
-          <span
-            className="brand-mark"
-            aria-hidden
-            style={{ width: 64, height: 64, fontSize: 30, marginBottom: 14 }}
-          >
-            S
-          </span>
+          <BrandMark style={{ width: 64, height: 64, marginBottom: 14 }} />
           <div style={{ fontWeight: 700, fontSize: 22 }}>SplitSmart</div>
           <div className="muted" style={{ fontSize: 14 }}>
             Split expenses, settle over UPI

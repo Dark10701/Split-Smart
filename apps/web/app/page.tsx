@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/auth';
+import { BrandMark } from '../components/BrandMark';
 
 export default function Home() {
   const { token, ready } = useAuth();
@@ -17,18 +18,13 @@ export default function Home() {
   return (
     <div className="app-frame">
       <main className="container" style={{ paddingTop: 72, textAlign: 'center' }}>
-        <div
-          className="brand-mark"
+        <BrandMark
           style={{
             width: 80,
             height: 80,
-            fontSize: 38,
             margin: '0 auto 24px',
           }}
-          aria-hidden
-        >
-          S
-        </div>
+        />
         <h1
           style={{
             fontSize: 34,

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { BrandMark } from './BrandMark';
 
 /**
  * App-open splash (Splitwise-style): the brand mark pops in, then the cover
@@ -29,7 +30,7 @@ export function Splash() {
   return (
     <div className="splash" aria-hidden>
       <div className="splash-inner">
-        <span className="brand-mark">S</span>
+        <BrandMark />
         <div className="splash-name">SplitSmart</div>
         <div className="splash-tag">Split expenses. Settle over UPI.</div>
       </div>
