@@ -26,6 +26,8 @@ model User {
   name            String
   defaultCurrency String   @default("INR")
   upiId           String?
+  /// Preferred avatar color (hex, e.g. #4f46e5). Null = derived from name hash.
+  avatarColor     String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

@@ -3,13 +3,52 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
-import { api, ApiError, type Me } from '../../lib/api';
+import { api, ApiError, AVATAR_COLORS, type Me, type NotificationPref } from '../../lib/api';
 import { AppShell, Avatar, SkeletonList, ErrorState, ThemeToggle } from '../../components/ui';
+
+const PREF_TYPES: Array<{ type: NotificationPref['type']; label: string; hint: string }> = [
+  { type: 'expense_added', label: 'Expense added', hint: 'Someone adds an expense in your group' },
+  { type: 'settle_up', label: 'Settle-up requests', hint: 'Someone asks you to settle a balance' },
+  {
+    type: 'payment_confirmed',
+    label: 'Payment recorded',
+    hint: 'A payment involving you is recorded',
+  },
+  { type: 'reminder', label: 'Reminders', hint: 'Nudges about balances left unsettled' },
+];
+
+/** Small on/off switch reusing the theme-toggle styling. */
+function Switch({
+  on,
+  onChange,
+  label,
+  disabled,
+}: {
+  on: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      className="switch"
+      data-on={on ? 'true' : 'false'}
+      disabled={disabled}
+      style={disabled ? { opacity: 0.5 } : undefined}
+      onClick={() => onChange(!on)}
+    />
+  );
+}
 
 export default function ProfilePage() {
   const { token, ready, signOut } = useAuth();
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
+  const [prefs, setPrefs] = useState<NotificationPref[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [name, setName] = useState('');
@@ -17,13 +56,18 @@ export default function ProfilePage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [prefError, setPrefError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     try {
-      const profile = await api.me(token);
+      const [profile, notifPrefs] = await Promise.all([
+        api.me(token),
+        api.listNotificationPrefs(token),
+      ]);
       setMe(profile);
+      setPrefs(notifPrefs);
       setName(profile.name);
       setUpi(profile.upiId ?? '');
       setLoadError(false);
@@ -77,84 +121,194 @@ export default function ProfilePage() {
     }
   };
 
+  /** Picking a swatch saves immediately; picking the active one resets to auto. */
+  const pickColor = async (color: string): Promise<void> => {
+    if (!token || !me) return;
+    const next = me.avatarColor === color ? null : color;
+    const prev = me;
+    setMe({ ...me, avatarColor: next }); // optimistic
+    try {
+      setMe(await api.updateMe(token, { avatarColor: next }));
+    } catch {
+      setMe(prev);
+      setError('Could not save your avatar color');
+    }
+  };
+
+  /** Toggles save immediately (optimistically, reverting on failure). */
+  const togglePref = async (
+    type: NotificationPref['type'],
+    channel: NotificationPref['channel'],
+    enabled: boolean,
+  ): Promise<void> => {
+    if (!token) return;
+    setPrefError(null);
+    const prev = prefs;
+    setPrefs((p) =>
+      p.map((x) => (x.type === type && x.channel === channel ? { ...x, enabled } : x)),
+    );
+    try {
+      setPrefs(await api.updateNotificationPrefs(token, [{ type, channel, enabled }]));
+    } catch {
+      setPrefs(prev);
+      setPrefError('Could not save that preference — try again');
+    }
+  };
+
+  const pref = (type: NotificationPref['type'], channel: NotificationPref['channel']): boolean =>
+    prefs.find((p) => p.type === type && p.channel === channel)?.enabled ?? true;
+
   return (
     <AppShell title="Profile" active="profile">
-      <h1 style={{ fontSize: 24, marginBottom: 16 }}>Your profile</h1>
-
       {loading ? (
-        <SkeletonList rows={3} />
+        <SkeletonList rows={4} />
       ) : loadError ? (
         <ErrorState message="Could not load your profile" onRetry={() => void load()} />
       ) : me ? (
-        <div className="card card-pad">
-          <div
-            className="row"
-            style={{ gap: 14, marginBottom: 20, flexDirection: 'column', textAlign: 'center' }}
-          >
-            <Avatar name={me.name} size={72} />
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 19 }}>{me.name}</div>
-              <div className="muted" style={{ fontSize: 14 }}>
-                {me.email}
-              </div>
+        <div className="stack" style={{ gap: 14 }}>
+          {/* ---- Identity ---- */}
+          <div className="card card-pad" style={{ textAlign: 'center' }}>
+            <div style={{ display: 'inline-block', margin: '6px 0 10px' }}>
+              <Avatar name={me.name} size={76} color={me.avatarColor} />
             </div>
-          </div>
+            <div style={{ fontWeight: 700, fontSize: 19 }}>{me.name}</div>
+            <div className="muted" style={{ fontSize: 14, marginBottom: 14 }}>
+              {me.email}
+            </div>
 
-          <div className="field">
-            <label className="label" htmlFor="name">
-              Name
-            </label>
-            <input
-              id="name"
-              className="input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-
-          <div className="field">
-            <label className="label" htmlFor="upi">
-              UPI ID
-            </label>
-            <input
-              id="upi"
-              className="input"
-              value={upi}
-              onChange={(e) => setUpi(e.target.value)}
-              autoCapitalize="none"
-              spellCheck={false}
-              placeholder="yourname@bank  or  upi://pay?pa=…"
-            />
-            <p className="faint" style={{ fontSize: 13, margin: '7px 0 0' }}>
-              Type your UPI ID, or paste a UPI payment link / your UPI QR&apos;s contents. Members
-              use this to pay you directly. Leave blank to remove.
+            <div className="section-title" style={{ textAlign: 'left' }}>
+              Avatar color
+            </div>
+            <div
+              className="row"
+              style={{ justifyContent: 'flex-start', flexWrap: 'wrap', gap: 10 }}
+            >
+              {AVATAR_COLORS.map((c) => (
+                <button
+                  key={c}
+                  aria-label={`Avatar color ${c}${me.avatarColor === c ? ' (selected — tap to reset)' : ''}`}
+                  aria-pressed={me.avatarColor === c}
+                  onClick={() => void pickColor(c)}
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: '50%',
+                    background: c,
+                    cursor: 'pointer',
+                    border:
+                      me.avatarColor === c ? '3px solid var(--text)' : '3px solid transparent',
+                  }}
+                />
+              ))}
+            </div>
+            <p className="faint" style={{ fontSize: 12, textAlign: 'left', margin: '8px 0 0' }}>
+              Shown next to your name in every group. Tap the selected color again for automatic.
             </p>
           </div>
 
-          {error && <p className="error">{error}</p>}
-          {msg && <p className="success-text">{msg}</p>}
-          <button
-            className="btn btn-primary btn-block"
-            onClick={() => void save()}
-            disabled={saving}
-            style={{ marginTop: 6 }}
-          >
-            {saving ? 'Saving…' : 'Save changes'}
-          </button>
+          {/* ---- Account ---- */}
+          <div className="card card-pad">
+            <div className="section-title">Account</div>
+            <div className="field">
+              <label className="label" htmlFor="name">
+                Name
+              </label>
+              <input
+                id="name"
+                className="input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label className="label" htmlFor="upi">
+                UPI ID
+              </label>
+              <input
+                id="upi"
+                className="input"
+                value={upi}
+                onChange={(e) => setUpi(e.target.value)}
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="yourname@bank  or  upi://pay?pa=…"
+              />
+              <p className="faint" style={{ fontSize: 13, margin: '7px 0 0' }}>
+                Type your UPI ID, or paste a UPI payment link / your UPI QR&apos;s contents. Members
+                use this to pay you directly. Leave blank to remove.
+              </p>
+            </div>
+            {error && <p className="error">{error}</p>}
+            {msg && <p className="success-text">{msg}</p>}
+            <button
+              className="btn btn-primary btn-block"
+              onClick={() => void save()}
+              disabled={saving}
+            >
+              {saving ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
 
-          <hr className="divider" />
-          <div className="between">
-            <div>
-              <div style={{ fontWeight: 600 }}>Dark mode</div>
-              <div className="faint" style={{ fontSize: 13 }}>
-                Switch between the dark and light theme
+          {/* ---- Notifications ---- */}
+          <div className="card card-pad">
+            <div className="between" style={{ marginBottom: 10 }}>
+              <div className="section-title" style={{ marginBottom: 0 }}>
+                Notifications
+              </div>
+              <div className="row" style={{ gap: 18 }}>
+                <span className="faint" style={{ fontSize: 11, fontWeight: 700 }}>
+                  PUSH
+                </span>
+                <span className="faint" style={{ fontSize: 11, fontWeight: 700 }}>
+                  EMAIL
+                </span>
               </div>
             </div>
-            <ThemeToggle />
+            {PREF_TYPES.map(({ type, label, hint }) => (
+              <div key={type} className="list-item">
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 600 }}>{label}</div>
+                  <div className="faint" style={{ fontSize: 12 }}>
+                    {hint}
+                  </div>
+                </div>
+                <div className="row" style={{ gap: 12, flexShrink: 0 }}>
+                  <Switch
+                    on={pref(type, 'push')}
+                    onChange={(v) => void togglePref(type, 'push', v)}
+                    label={`${label} push notifications`}
+                  />
+                  <Switch
+                    on={pref(type, 'email')}
+                    onChange={(v) => void togglePref(type, 'email', v)}
+                    label={`${label} email notifications`}
+                  />
+                </div>
+              </div>
+            ))}
+            {prefError && (
+              <p className="error" style={{ marginBottom: 0 }}>
+                {prefError}
+              </p>
+            )}
           </div>
-          <button className="btn btn-ghost btn-block" onClick={signOut} style={{ marginTop: 16 }}>
-            Sign out
-          </button>
+
+          {/* ---- Appearance + session ---- */}
+          <div className="card card-pad">
+            <div className="between">
+              <div>
+                <div style={{ fontWeight: 600 }}>Dark mode</div>
+                <div className="faint" style={{ fontSize: 13 }}>
+                  Switch between the dark and light theme
+                </div>
+              </div>
+              <ThemeToggle />
+            </div>
+            <hr className="divider" />
+            <button className="btn btn-ghost btn-block" onClick={signOut}>
+              Sign out
+            </button>
+          </div>
         </div>
       ) : null}
     </AppShell>

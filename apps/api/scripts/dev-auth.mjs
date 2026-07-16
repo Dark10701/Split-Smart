@@ -71,16 +71,35 @@ http
       return;
     }
 
-    // GET /token            → list the demo users (name + email)
-    // GET /token?user=maya  → a signed bearer token for that user
+    // GET /token                          → list the demo users (name + email)
+    // GET /token?user=maya                → a signed token for a demo user
+    // GET /token?email=you@x.com&name=You → a signed token for that identity
+    //   (the API creates the account on first request — email sign-in for dev)
     if (url.pathname === '/token') {
       const wanted = url.searchParams.get('user');
+      const email = url.searchParams.get('email')?.trim().toLowerCase();
+
+      if (email !== undefined) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          res.writeHead(400, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ error: 'invalid email' }));
+          return;
+        }
+        const name = url.searchParams.get('name')?.trim() || email.split('@')[0];
+        const token = await mint(`dev|${email}`, email, name);
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ token, name, email }));
+        return;
+      }
+
       if (!wanted) {
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(JSON.stringify(users.map(({ sub, email, name }) => ({ sub, email, name }))));
         return;
       }
-      const user = users.find((u) => u.sub === wanted || u.name.toLowerCase() === wanted.toLowerCase());
+      const user = users.find(
+        (u) => u.sub === wanted || u.name.toLowerCase() === wanted.toLowerCase(),
+      );
       if (!user) {
         res.writeHead(404, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ error: `unknown dev user "${wanted}"` }));

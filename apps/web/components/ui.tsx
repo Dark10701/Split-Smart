@@ -68,16 +68,30 @@ export function ThemeToggle() {
   );
 }
 
-/** Colored circular initials avatar for a member/person (decorative). */
-export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
-  const { color, initials } = avatarFor(name);
+/** Colored circular initials avatar for a member/person (decorative).
+ *  `color` overrides the name-hash color when the user picked one. */
+export function Avatar({
+  name,
+  size = 40,
+  color,
+}: {
+  name: string;
+  size?: number;
+  color?: string | null;
+}) {
+  const derived = avatarFor(name);
   return (
     <span
       className="avatar"
-      style={{ background: color, width: size, height: size, fontSize: size * 0.38 }}
+      style={{
+        background: color ?? derived.color,
+        width: size,
+        height: size,
+        fontSize: size * 0.38,
+      }}
       aria-hidden
     >
-      {initials}
+      {derived.initials}
     </span>
   );
 }

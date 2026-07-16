@@ -51,7 +51,7 @@ export class GroupsService {
           where: { removedAt: null },
           // Expose only what members need of each other: display name and the
           // UPI VPA for settle-up. Never the email or auth subject.
-          include: { user: { select: { name: true, upiId: true } } },
+          include: { user: { select: { name: true, upiId: true, avatarColor: true } } },
         },
       },
     });

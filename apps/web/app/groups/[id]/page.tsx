@@ -8,6 +8,7 @@ import {
   formatMoney,
   memberName,
   memberUpi,
+  memberColor,
   type GroupDetail,
   type Expense,
   type GroupBalances,
@@ -174,7 +175,11 @@ export default function GroupDetailPage() {
                     borderRadius: '50%',
                   }}
                 >
-                  <Avatar name={memberName(group.members, m.id)} size={30} />
+                  <Avatar
+                    name={memberName(group.members, m.id)}
+                    size={30}
+                    color={memberColor(group.members, m.id)}
+                  />
                 </span>
               ))}
               {group.members.length > 6 && (
@@ -189,12 +194,7 @@ export default function GroupDetailPage() {
           </button>
         </div>
 
-        <div
-          className="tabs"
-          style={{ margin: '18px 0' }}
-          role="tablist"
-          aria-label="Group views"
-        >
+        <div className="tabs" style={{ margin: '18px 0' }} role="tablist" aria-label="Group views">
           {(['expenses', 'balances', 'activity'] as Tab[]).map((t) => (
             <button
               key={t}
@@ -350,7 +350,9 @@ function ExpensesTab({
             <div className="bal-side">
               <div className="l">{inv.label}</div>
               {inv.amount > 0 && (
-                <div className={`v ${inv.tone === 'pos' ? 'pos' : inv.tone === 'neg' ? 'neg' : ''}`}>
+                <div
+                  className={`v ${inv.tone === 'pos' ? 'pos' : inv.tone === 'neg' ? 'neg' : ''}`}
+                >
                   {formatMoney(inv.amount, e.currency)}
                 </div>
               )}
@@ -385,7 +387,10 @@ function BalancesTab({
           return (
             <div key={m.id} className="list-item">
               <div className="row" style={{ gap: 12 }}>
-                <Avatar name={memberName(group.members, m.id)} />
+                <Avatar
+                  name={memberName(group.members, m.id)}
+                  color={memberColor(group.members, m.id)}
+                />
                 <span style={{ fontWeight: 600 }}>{memberName(group.members, m.id)}</span>
               </div>
               {net === 0 ? (
@@ -423,11 +428,19 @@ function BalancesTab({
             return (
               <div key={i} className="list-item">
                 <div className="row" style={{ gap: 8 }}>
-                  <Avatar name={memberName(group.members, t.fromMemberId)} size={32} />
+                  <Avatar
+                    name={memberName(group.members, t.fromMemberId)}
+                    size={32}
+                    color={memberColor(group.members, t.fromMemberId)}
+                  />
                   <span className="faint" aria-hidden>
                     →
                   </span>
-                  <Avatar name={memberName(group.members, t.toMemberId)} size={32} />
+                  <Avatar
+                    name={memberName(group.members, t.toMemberId)}
+                    size={32}
+                    color={memberColor(group.members, t.toMemberId)}
+                  />
                   <div>
                     <div style={{ fontSize: 14 }}>
                       <strong>{memberName(group.members, t.fromMemberId)}</strong> →{' '}
@@ -541,7 +554,11 @@ function ManagePeopleModal({
       <div className="stack" style={{ gap: 8, marginBottom: 18 }}>
         {group.members.map((m) => (
           <div key={m.id} className="row" style={{ gap: 10 }}>
-            <Avatar name={memberName(group.members, m.id)} size={32} />
+            <Avatar
+              name={memberName(group.members, m.id)}
+              size={32}
+              color={memberColor(group.members, m.id)}
+            />
             <span style={{ fontWeight: 600 }}>{memberName(group.members, m.id)}</span>
             {!m.userId && <span className="badge">guest</span>}
           </div>

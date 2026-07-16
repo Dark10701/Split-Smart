@@ -101,14 +101,18 @@ export const updateNotificationPrefsSchema = z.object({
 });
 export type UpdateNotificationPrefsInput = z.infer<typeof updateNotificationPrefsSchema>;
 
+/** Avatar color: a #rrggbb hex value (the web/mobile pickers offer a palette). */
+export const avatarColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a #rrggbb color');
+
 /** PATCH /me body. All fields optional; at least one must be present. */
 export const updateMeSchema = z
   .object({
     name: z.string().min(1).max(80).optional(),
     defaultCurrency: currencyCodeSchema.optional(),
     upiId: upiIdInputSchema.nullable().optional(),
+    avatarColor: avatarColorSchema.nullable().optional(),
   })
-  .refine((v) => v.name !== undefined || v.defaultCurrency !== undefined || v.upiId !== undefined, {
+  .refine((v) => Object.values(v).some((field) => field !== undefined), {
     message: 'Provide at least one field to update',
   });
 export type UpdateMeInput = z.infer<typeof updateMeSchema>;
