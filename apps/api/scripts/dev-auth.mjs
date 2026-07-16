@@ -21,6 +21,11 @@
 import http from 'node:http';
 import { generateKeyPair, exportJWK, SignJWT } from 'jose';
 
+// Dev convenience: log request-handling errors instead of dying — a crashed
+// issuer silently breaks the web app's one-click sign-in.
+process.on('uncaughtException', (err) => console.error('[dev-auth] error:', err));
+process.on('unhandledRejection', (err) => console.error('[dev-auth] rejection:', err));
+
 const PORT = 3999;
 const ISSUER = `http://localhost:${PORT}/`;
 const AUDIENCE = 'splitsmart-api';
@@ -89,6 +94,18 @@ http
 
     res.writeHead(404);
     res.end();
+  })
+  .on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(
+        `\nPort ${PORT} is already in use — another dev-auth is probably running.` +
+          `\nEither keep using that one, or free the port and retry:` +
+          `\n  PowerShell:  Get-NetTCPConnection -LocalPort ${PORT} | ` +
+          `ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }\n`,
+      );
+      process.exit(1);
+    }
+    throw err;
   })
   .listen(PORT, async () => {
     console.log(`\nDev auth issuer running — JWKS at ${ISSUER}jwks.json\n`);
