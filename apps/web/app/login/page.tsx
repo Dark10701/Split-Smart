@@ -37,7 +37,6 @@ export default function LoginPage() {
               height: 64,
               fontSize: 30,
               marginBottom: 14,
-              animation: 'float 4s ease-in-out infinite',
             }}
           >
             S
