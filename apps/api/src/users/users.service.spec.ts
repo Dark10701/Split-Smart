@@ -31,6 +31,23 @@ describe('UsersService', () => {
     expect(arg.data.email).toBe('maya@example.com');
     expect(arg.data.notificationPrefs.create).toHaveLength(defaultNotificationPrefs('').length);
   });
+
+  it('links a new subject to the existing account with the same verified email', async () => {
+    const existing = { id: 'u1', authSubject: 'dev|maya', email: 'maya@example.com', name: 'Maya' };
+    // First lookup (by subject) misses; second (by email) hits.
+    const findUnique = jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(existing);
+    const update = jest.fn().mockResolvedValue({ ...existing, authSubject: 'auth0|42' });
+    const create = jest.fn();
+    const mod = await build({ findUnique, update, create });
+    const svc = mod.get(UsersService);
+    const user = await svc.resolveFromClaims(claims);
+    expect(user.authSubject).toBe('auth0|42');
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: { authSubject: 'auth0|42' },
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
 });
 
 describe('UsersService GDPR (M6-17/18)', () => {

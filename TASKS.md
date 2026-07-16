@@ -345,6 +345,21 @@ Run against a live API + Postgres + Redis (`docker compose up -d`, `prisma migra
 
 ---
 
+## M6.5 — Account & Profile (web, 2026-07-16)
+
+> Follow-up slice after the web redesign: real-feeling local sign-in and a
+> customizable profile. Production OIDC (M1-01) remains a config swap.
+
+- [x] **M6.5-01** Dev issuer: `GET /token?email=&name=` mints a token for any identity (email sign-in for local dev; CORS for the web app).
+- [x] **M6.5-02** `resolveFromClaims`: link a new subject to an existing account with the same verified email instead of failing the unique constraint (unit-tested).
+- [x] **M6.5-03** Web login: email + name sign-in form (account created on first sign-in); demo accounts + manual token as fallbacks.
+- [x] **M6.5-04** `avatarColor` on User (+`0007` migration), `updateMeSchema` validation (`#rrggbb`, nullable reset; unit-tested), exposed via `/me` and group-member payloads.
+- [x] **M6.5-05** Web profile: avatar color picker (optimistic save), member avatars across group screens use the chosen color.
+- [x] **M6.5-06** Web profile: notification-preference toggles (push/email × 4 types) on the existing `/me/notification-prefs` API, optimistic with revert.
+- [x] **M6.5-07** Profile reorganized into sections (identity, account, notifications, appearance + sign out).
+
+---
+
 ## M7 — Public Launch
 
 - [ ] **M7-01** App Store listing assets + metadata.

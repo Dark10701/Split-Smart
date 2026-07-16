@@ -52,6 +52,15 @@ describe('validation', () => {
     expect(updateMeSchema.safeParse({ defaultCurrency: 'EUR' }).success).toBe(true);
   });
 
+  it('updateMe validates avatarColor as #rrggbb and allows null to reset', () => {
+    expect(updateMeSchema.safeParse({ avatarColor: '#4f46e5' }).success).toBe(true);
+    expect(updateMeSchema.safeParse({ avatarColor: '#ABCDEF' }).success).toBe(true);
+    expect(updateMeSchema.safeParse({ avatarColor: null }).success).toBe(true);
+    expect(updateMeSchema.safeParse({ avatarColor: '#fff' }).success).toBe(false);
+    expect(updateMeSchema.safeParse({ avatarColor: '4f46e5' }).success).toBe(false);
+    expect(updateMeSchema.safeParse({ avatarColor: 'red' }).success).toBe(false);
+  });
+
   it('createGroup requires a name', () => {
     expect(createGroupSchema.safeParse({ name: 'Trip' }).success).toBe(true);
     expect(createGroupSchema.safeParse({ name: '' }).success).toBe(false);

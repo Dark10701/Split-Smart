@@ -8,6 +8,14 @@ export interface Me {
   name: string;
   defaultCurrency: string;
   upiId: string | null;
+  avatarColor: string | null;
+}
+
+export interface NotificationPref {
+  id: string;
+  channel: 'push' | 'email' | 'sms' | 'in_app';
+  type: 'expense_added' | 'settle_up' | 'payment_confirmed' | 'reminder';
+  enabled: boolean;
 }
 export interface Group {
   id: string;
@@ -20,8 +28,8 @@ export interface GroupMember {
   userId: string | null;
   guestName: string | null;
   role: string;
-  /** Display name + UPI VPA of the linked account (null for guests). */
-  user: { name: string; upiId: string | null } | null;
+  /** Display name + UPI VPA + avatar color of the linked account (null for guests). */
+  user: { name: string; upiId: string | null; avatarColor: string | null } | null;
 }
 export interface GroupDetail extends Group {
   members: GroupMember[];
@@ -128,12 +136,28 @@ async function unwrap<T>(res: Response): Promise<T> {
 
 export const api = {
   me: (token: string) => fetch(`${API_URL}/me`, { headers: headers(token) }).then(unwrap<Me>),
-  updateMe: (token: string, body: { name?: string; upiId?: string | null }) =>
+  updateMe: (
+    token: string,
+    body: { name?: string; upiId?: string | null; avatarColor?: string | null },
+  ) =>
     fetch(`${API_URL}/me`, {
       method: 'PATCH',
       headers: headers(token),
       body: JSON.stringify(body),
     }).then(unwrap<Me>),
+  listNotificationPrefs: (token: string) =>
+    fetch(`${API_URL}/me/notification-prefs`, { headers: headers(token) }).then(
+      unwrap<NotificationPref[]>,
+    ),
+  updateNotificationPrefs: (
+    token: string,
+    prefs: Array<Pick<NotificationPref, 'channel' | 'type' | 'enabled'>>,
+  ) =>
+    fetch(`${API_URL}/me/notification-prefs`, {
+      method: 'PATCH',
+      headers: headers(token),
+      body: JSON.stringify({ prefs }),
+    }).then(unwrap<NotificationPref[]>),
   listGroups: (token: string) =>
     fetch(`${API_URL}/groups`, { headers: headers(token) }).then(unwrap<Group[]>),
   createGroup: (token: string, name: string) =>
@@ -240,7 +264,16 @@ export function toMinor(input: string): number | null {
   return Number(whole) * 100 + Number(frac.padEnd(2, '0'));
 }
 
-const AVATAR_COLORS = ['#4f46e5', '#0ea5e9', '#059669', '#d97706', '#db2777', '#7c3aed', '#dc2626'];
+/** Palette offered by the profile color picker; also the hash fallback pool. */
+export const AVATAR_COLORS = [
+  '#4f46e5',
+  '#0ea5e9',
+  '#059669',
+  '#d97706',
+  '#db2777',
+  '#7c3aed',
+  '#dc2626',
+];
 
 /** Deterministic avatar color + initials for a member. */
 export function avatarFor(name: string): { color: string; initials: string } {
@@ -261,4 +294,9 @@ export function memberName(members: GroupMember[], id: string): string {
 
 export function memberUpi(members: GroupMember[], id: string): string | null {
   return members.find((x) => x.id === id)?.user?.upiId ?? null;
+}
+
+/** A member's chosen avatar color, or null to fall back to the name hash. */
+export function memberColor(members: GroupMember[], id: string): string | null {
+  return members.find((x) => x.id === id)?.user?.avatarColor ?? null;
 }

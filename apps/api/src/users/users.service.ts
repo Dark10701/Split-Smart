@@ -41,6 +41,18 @@ export class UsersService {
     });
     if (existing) return existing;
 
+    // Same email under a new subject (e.g. a different connection at the same
+    // issuer): link the verified email to the existing account instead of
+    // failing the unique constraint. The claims were signature-verified against
+    // our configured issuer, so the email is trusted.
+    const byEmail = await this.prisma.user.findUnique({ where: { email: data.email } });
+    if (byEmail) {
+      return this.prisma.user.update({
+        where: { id: byEmail.id },
+        data: { authSubject: data.authSubject },
+      });
+    }
+
     return this.prisma.user.create({
       data: {
         authSubject: data.authSubject,
