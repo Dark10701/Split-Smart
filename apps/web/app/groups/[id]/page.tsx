@@ -27,6 +27,11 @@ import {
 } from '../../../components/ui';
 import { AddExpenseModal } from '../../../components/AddExpenseModal';
 import { SettleUpModal } from '../../../components/SettleUpModal';
+import { buildBalanceSheet } from '../../../lib/balances';
+import {
+  downloadBalanceSheetPdf,
+  downloadBalanceSheetCsv,
+} from '../../../lib/balance-sheet-export';
 
 type Tab = 'expenses' | 'balances' | 'activity';
 
@@ -233,7 +238,12 @@ export default function GroupDetailPage() {
             />
           )}
           {tab === 'balances' && (
-            <BalancesTab group={group} balances={balances} onSettle={(t) => setSettling(t)} />
+            <BalancesTab
+              group={group}
+              balances={balances}
+              expenses={expenses}
+              onSettle={(t) => setSettling(t)}
+            />
           )}
           {tab === 'activity' && <ActivityTab group={group} activity={activity} />}
         </div>
@@ -404,16 +414,24 @@ function CopyVpa({ vpa }: { vpa: string }) {
 function BalancesTab({
   group,
   balances,
+  expenses,
   onSettle,
 }: {
   group: GroupDetail;
   balances: GroupBalances | null;
+  expenses: Expense[];
   onSettle: (t: Transfer | 'blank') => void;
 }) {
   if (!balances) return <SkeletonList rows={3} />;
   const currency = group.defaultCurrency;
   const nets = balances.nets[currency] ?? {};
   const settlements = balances.settlements;
+
+  const exportSheet = (kind: 'pdf' | 'csv'): void => {
+    const sheet = buildBalanceSheet(group, expenses, balances);
+    if (kind === 'pdf') downloadBalanceSheetPdf(sheet);
+    else downloadBalanceSheetCsv(sheet);
+  };
 
   return (
     <div className="stack">
@@ -495,6 +513,35 @@ function BalancesTab({
               </div>
             );
           })
+        )}
+      </div>
+
+      <div className="card card-pad">
+        <div className="section-title">Balance sheet</div>
+        <p className="faint" style={{ fontSize: 13, margin: '0 0 12px' }}>
+          A shareable summary — members, contributions, shares, who owes whom, and the full expense
+          history.
+        </p>
+        <div className="row">
+          <button
+            className="btn btn-primary btn-block"
+            onClick={() => exportSheet('pdf')}
+            disabled={expenses.length === 0}
+          >
+            ⬇ Download PDF
+          </button>
+          <button
+            className="btn btn-ghost btn-block"
+            onClick={() => exportSheet('csv')}
+            disabled={expenses.length === 0}
+          >
+            Export CSV
+          </button>
+        </div>
+        {expenses.length === 0 && (
+          <p className="faint" style={{ fontSize: 12, margin: '10px 0 0' }}>
+            Add an expense to generate a balance sheet.
+          </p>
         )}
       </div>
     </div>
