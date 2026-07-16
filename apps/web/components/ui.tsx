@@ -114,13 +114,18 @@ function Icon({ path }: { path: string }) {
 
 const ICONS = {
   home: 'M12 3l9 8h-3v9h-4v-6h-4v6H6v-9H3l9-8z',
+  friends:
+    'M16 11a3 3 0 100-6 3 3 0 000 6zm-8 0a3 3 0 100-6 3 3 0 000 6zm0 2c-2.7 0-6 1.3-6 4v1h8v-1c0-1 .4-1.9 1-2.6-.9-.3-2-.4-3-.4zm8 0c-.3 0-.6 0-1 .1 1 .8 1.5 1.8 1.5 2.9v1H22v-1c0-2.7-3.3-4-6-4z',
   profile: 'M12 12a4 4 0 100-8 4 4 0 000 8zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5z',
 };
 
-/** GPay-style bottom navigation bar shown on the home/profile tabs. */
-export function BottomNav({ active }: { active: 'home' | 'profile' }) {
+export type NavTab = 'home' | 'friends' | 'profile';
+
+/** GPay-style bottom navigation bar shown on the root tabs. */
+export function BottomNav({ active }: { active: NavTab }) {
   const items = [
-    { key: 'home' as const, label: 'Home', href: '/groups', path: ICONS.home },
+    { key: 'home' as const, label: 'Groups', href: '/groups', path: ICONS.home },
+    { key: 'friends' as const, label: 'Friends', href: '/friends', path: ICONS.friends },
     { key: 'profile' as const, label: 'Profile', href: '/profile', path: ICONS.profile },
   ];
   return (
@@ -153,7 +158,7 @@ export function AppShell({
   children,
 }: {
   title: string;
-  active?: 'home' | 'profile';
+  active?: NavTab;
   back?: string;
   headerRight?: ReactNode;
   children: ReactNode;

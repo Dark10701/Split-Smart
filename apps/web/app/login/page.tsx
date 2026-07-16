@@ -118,16 +118,13 @@ export default function LoginPage() {
 
   return (
     <div className="app-frame">
-      <main className="container" style={{ paddingTop: 24 }}>
-        <a href="/" className="faint" style={{ fontSize: 14 }}>
-          ← Back
-        </a>
+      <main className="container" style={{ paddingTop: 48 }}>
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            margin: '36px 0 22px',
+            margin: '24px 0 22px',
           }}
         >
           <BrandMark style={{ width: 64, height: 64, marginBottom: 14 }} />

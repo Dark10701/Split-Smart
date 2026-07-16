@@ -361,6 +361,9 @@ Run against a live API + Postgres + Redis (`docker compose up -d`, `prisma migra
 - [x] **M6.5-09** Easier local run: `start-splitsmart.cmd` double-click launcher; `dev:local` detects an already-running stack and exits cleanly instead of failing mid-way.
 - [x] **M6.5-10** Email verification: OTP flow in the dev issuer (`/otp/request` + code-gated `/token`, 10-min expiry, 5 attempts, consumed on use); tokens carry `email_verified: true` and the API guard rejects tokens without it (schema-tested). Two-step login UI (email → code). Demo users stay pre-verified one-click.
 - [x] **M6.5-11** UI: FAB no longer overlaps the bottom-nav Profile item (lifted above the nav wherever a bottom nav is present; verified at mobile + desktop widths). `pnpm start` alias; README leads with the one-command flow.
+- [x] **M6.5-12** Login is the first screen: removed the marketing landing; root redirects to `/groups` (signed in) or `/login`.
+- [x] **M6.5-13** Friends tab: new `/friends` route + 3rd bottom-nav item. Cross-group per-person balances (you-owe / owes-you / net) computed from the simplified settle-up graph so it stays consistent with in-group suggestions; recomputes on each visit. Unit-tested (`lib/balances.test.ts`).
+- [x] **M6.5-14** Group balance sheet export: members, total expenses, per-member contributions + shares, outstanding who-owes-whom, full dated expense history. Professional multi-section **PDF** (jsPDF + autotable) and **CSV** (Excel-safe UTF-8), generated client-side. Verified reconciliation + live download.
 
 ---
 
