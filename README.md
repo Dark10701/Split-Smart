@@ -131,6 +131,13 @@ physical device.
 | `pnpm --filter @splitsmart/api dev:auth` | Local dev token issuer |
 | `pnpm --filter @splitsmart/api prisma:deploy` | Apply DB migrations |
 
+> **API restarting constantly / feeling flaky?** If the repo lives inside a
+> OneDrive/Dropbox-synced folder, the sync client touches files continuously and
+> retriggers the dev watchers (the API recompiles and restarts in a loop). The
+> watcher now ignores `dist/`, which removes the worst of it — but for a smooth
+> experience keep dev repos in a non-synced path (e.g. `C:\dev\split-smart`) or
+> pause syncing while developing.
+
 ## Observability (optional)
 
 The API is instrumented but stays a no-op unless configured:
