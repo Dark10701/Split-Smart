@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 import { buildUpiPayUri } from '@splitsmart/types';
 import {
   api,
@@ -38,33 +39,71 @@ export function SettleUpModal({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [upiOpened, setUpiOpened] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const currency = suggested?.currency ?? group.defaultCurrency;
   // UPI links are INR-only (cu=INR, paise): hide for any non-INR settlement.
   const payeeVpa = currency === 'INR' ? memberUpi(members, to) : null;
 
+  // The upi://pay link for the current payee + amount (null until both valid).
+  const amountMinor = toMinor(amount);
+  const upiUri =
+    payeeVpa && amountMinor !== null && amountMinor > 0
+      ? buildUpiPayUri({
+          payeeVpa,
+          payeeName: memberName(members, to),
+          amountPaise: amountMinor,
+          note: `SplitSmart · ${group.name}`,
+        })
+      : null;
+
+  // Desktop can't open upi:// links, so also render the same link as a QR the
+  // payer scans with any UPI app on their phone (amount + note pre-filled).
+  useEffect(() => {
+    let cancelled = false;
+    if (!upiUri) {
+      setQrDataUrl(null);
+      return;
+    }
+    QRCode.toDataURL(upiUri, { width: 208, margin: 1 })
+      .then((url) => {
+        if (!cancelled) setQrDataUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setQrDataUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [upiUri]);
+
   const payViaUpi = (): void => {
     setError(null);
-    const amountMinor = toMinor(amount);
-    if (amountMinor === null || amountMinor <= 0) return setError('Enter a valid amount first');
-    if (!payeeVpa) return;
+    if (!upiUri) return setError('Enter a valid amount first');
     setMethod('upi');
-    const uri = buildUpiPayUri({
-      payeeVpa,
-      payeeName: memberName(members, to),
-      amountPaise: amountMinor,
-      note: `SplitSmart · ${group.name}`,
-    });
     // Hand off to the UPI app without unloading the SPA. If no handler exists
-    // (e.g. desktop), the click is a no-op and the user stays here to record
-    // the payment manually — nothing gets stranded.
+    // (e.g. desktop), the click is a no-op and the user stays here — the QR
+    // and copy button cover that case.
     const a = document.createElement('a');
-    a.href = uri;
+    a.href = upiUri;
     a.rel = 'noopener';
     document.body.appendChild(a);
     a.click();
     a.remove();
     setUpiOpened(true);
+  };
+
+  const copyVpa = async (): Promise<void> => {
+    if (!payeeVpa) return;
+    try {
+      await navigator.clipboard.writeText(payeeVpa);
+      setCopied(true);
+      setMethod('upi');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError('Could not copy — select the UPI ID manually');
+    }
   };
 
   const submit = async (): Promise<void> => {
@@ -158,13 +197,51 @@ export function SettleUpModal({
       </div>
 
       {payeeVpa && (
-        <button
-          className="btn btn-success btn-block"
-          onClick={payViaUpi}
-          style={{ marginBottom: 10 }}
+        <div
+          className="card card-pad"
+          style={{ background: 'var(--positive-soft)', border: 'none', marginBottom: 12 }}
         >
-          Pay {memberName(members, to)} via UPI ({payeeVpa})
-        </button>
+          <div className="between" style={{ marginBottom: 10 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>
+                Pay {memberName(members, to)} via UPI
+              </div>
+              <div className="mono" style={{ fontSize: 12, color: 'var(--muted)' }}>
+                {payeeVpa}
+              </div>
+            </div>
+            <button className="btn btn-ghost btn-sm" onClick={() => void copyVpa()}>
+              {copied ? 'Copied ✓' : 'Copy ID'}
+            </button>
+          </div>
+          <button className="btn btn-success btn-block" onClick={payViaUpi}>
+            Open UPI app{amountMinor ? ` — pay ${formatMoney(amountMinor, currency)}` : ''}
+          </button>
+          {qrDataUrl && (
+            <div style={{ textAlign: 'center', marginTop: 12 }}>
+              <div
+                style={{
+                  display: 'inline-block',
+                  padding: 8,
+                  background: '#fff',
+                  borderRadius: 12,
+                }}
+              >
+                {/* Data-URL QR — next/image adds nothing for an inline data URI. */}
+                <img
+                  src={qrDataUrl}
+                  width={176}
+                  height={176}
+                  alt={`UPI payment QR for ${payeeVpa}`}
+                  style={{ display: 'block' }}
+                />
+              </div>
+              <div className="faint" style={{ fontSize: 12, marginTop: 6 }}>
+                On a computer? Scan with any UPI app — amount &amp; note are pre-filled.
+              </div>
+            </div>
+          )}
+        </div>
       )}
       {upiOpened && (
         <p className="success-text" style={{ marginTop: 0 }}>

@@ -357,6 +357,8 @@ Run against a live API + Postgres + Redis (`docker compose up -d`, `prisma migra
 - [x] **M6.5-05** Web profile: avatar color picker (optimistic save), member avatars across group screens use the chosen color.
 - [x] **M6.5-06** Web profile: notification-preference toggles (push/email × 4 types) on the existing `/me/notification-prefs` API, optimistic with revert.
 - [x] **M6.5-07** Profile reorganized into sections (identity, account, notifications, appearance + sign out).
+- [x] **M6.5-08** One-click UPI pay on web: settle-up sheet shows a scannable `upi://pay` QR (amount + note pre-filled, for desktop) alongside the open-app deep link, plus tap-to-copy for the payee VPA (modal + balances rows).
+- [x] **M6.5-09** Easier local run: `start-splitsmart.cmd` double-click launcher; `dev:local` detects an already-running stack and exits cleanly instead of failing mid-way.
 
 ---
 
