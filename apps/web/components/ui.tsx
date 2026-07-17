@@ -9,6 +9,43 @@ export function Skeleton({ className = '', style }: { className?: string; style?
   return <div className={`skeleton ${className}`} style={style} aria-hidden />;
 }
 
+export interface ToastState {
+  message: string;
+  kind: 'success' | 'error';
+}
+
+/**
+ * Lightweight toast for success/error microfeedback. Render `<Toast toast={t}
+ * onDone={() => setT(null)} />` near the page root and set state to show one;
+ * it auto-dismisses. Announced politely for screen readers.
+ */
+export function Toast({
+  toast,
+  onDone,
+  ms = 2600,
+}: {
+  toast: ToastState | null;
+  onDone: () => void;
+  ms?: number;
+}) {
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(onDone, ms);
+    return () => clearTimeout(t);
+  }, [toast, ms, onDone]);
+  if (!toast) return null;
+  return (
+    <div className="toast-wrap" role="status" aria-live="polite">
+      <div className={`toast toast-${toast.kind}`}>
+        <span className="toast-dot" aria-hidden>
+          {toast.kind === 'success' ? '✓' : '!'}
+        </span>
+        {toast.message}
+      </div>
+    </div>
+  );
+}
+
 /** A card of shimmer rows, used while a list is loading. */
 export function SkeletonList({ rows = 4 }: { rows?: number }) {
   return (

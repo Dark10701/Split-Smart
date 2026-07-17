@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 import { BrandMark } from '../../components/BrandMark';
+import { Scene } from '../../components/Scene';
 
 const DEV_AUTH_URL = process.env.NEXT_PUBLIC_DEV_AUTH_URL ?? 'http://localhost:3999';
 
@@ -298,6 +299,10 @@ export default function LoginPage() {
               </button>
             </>
           )}
+        </div>
+
+        <div style={{ marginTop: 26 }}>
+          <Scene />
         </div>
       </main>
     </div>

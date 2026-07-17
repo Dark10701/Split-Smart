@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../lib/auth';
 import {
   api,
@@ -24,6 +24,8 @@ import {
   SkeletonList,
   ErrorState,
   ConfirmDialog,
+  Toast,
+  type ToastState,
 } from '../../../components/ui';
 import { AddExpenseModal } from '../../../components/AddExpenseModal';
 import { SettleUpModal } from '../../../components/SettleUpModal';
@@ -74,6 +76,7 @@ export default function GroupDetailPage() {
   const { token, ready, signOut } = useAuth();
   const router = useRouter();
   const groupId = useParams<{ id: string }>().id;
+  const openAdd = useSearchParams().get('new') === '1';
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -83,7 +86,8 @@ export default function GroupDetailPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [tab, setTab] = useState<Tab>('expenses');
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(openAdd);
+  const [toast, setToast] = useState<ToastState | null>(null);
   const [settling, setSettling] = useState<Transfer | 'blank' | null>(null);
   const [openComments, setOpenComments] = useState<Expense | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Expense | null>(null);
@@ -259,6 +263,7 @@ export default function GroupDetailPage() {
             onClose={() => setAdding(false)}
             onSaved={() => {
               setAdding(false);
+              setToast({ message: 'Expense added', kind: 'success' });
               void load();
             }}
           />
@@ -271,6 +276,7 @@ export default function GroupDetailPage() {
             onClose={() => setSettling(null)}
             onSaved={() => {
               setSettling(null);
+              setToast({ message: 'Payment recorded', kind: 'success' });
               void load();
             }}
           />
@@ -299,6 +305,7 @@ export default function GroupDetailPage() {
             onCancel={() => setConfirmDelete(null)}
           />
         )}
+        <Toast toast={toast} onDone={() => setToast(null)} />
       </>
     </AppShell>
   );
