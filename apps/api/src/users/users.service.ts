@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import type { NotificationPref, User } from '@prisma/client';
 import type {
   AuthClaims,
@@ -16,6 +17,7 @@ export interface UserDataExport {
     id: string;
     email: string;
     name: string;
+    phone: string | null;
     defaultCurrency: string;
     upiId: string | null;
     createdAt: Date;
@@ -49,24 +51,52 @@ export class UsersService {
     if (byEmail) {
       return this.prisma.user.update({
         where: { id: byEmail.id },
-        data: { authSubject: data.authSubject },
+        data: {
+          authSubject: data.authSubject,
+          // Backfill the mobile number from the IdP for pre-phone accounts.
+          ...(byEmail.phone === null && data.phone ? { phone: data.phone } : {}),
+        },
       });
     }
 
-    return this.prisma.user.create({
-      data: {
-        authSubject: data.authSubject,
-        email: data.email,
-        name: data.name,
-        notificationPrefs: {
-          create: defaultNotificationPrefs('').map(({ userId: _u, ...p }) => p),
+    const prefs = { create: defaultNotificationPrefs('').map(({ userId: _u, ...p }) => p) };
+    try {
+      return await this.prisma.user.create({
+        data: {
+          authSubject: data.authSubject,
+          email: data.email,
+          name: data.name,
+          phone: data.phone,
+          notificationPrefs: prefs,
         },
-      },
-    });
+      });
+    } catch (e) {
+      // Phone already taken by another account: still create the identity —
+      // sign-in must not fail — and let the user set a phone from their profile.
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002' && data.phone) {
+        return this.prisma.user.create({
+          data: {
+            authSubject: data.authSubject,
+            email: data.email,
+            name: data.name,
+            notificationPrefs: prefs,
+          },
+        });
+      }
+      throw e;
+    }
   }
 
   async update(userId: string, input: UpdateMeInput): Promise<User> {
-    return this.prisma.user.update({ where: { id: userId }, data: input });
+    try {
+      return await this.prisma.user.update({ where: { id: userId }, data: input });
+    } catch (e) {
+      // Unique-constraint hit (phone/email already belongs to another account).
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new ConflictException('That mobile number is already linked to another account');
+      }
+      throw e;
+    }
   }
 
   /** List a user's per-channel/type notification preferences (M6-14). */
@@ -136,6 +166,7 @@ export class UsersService {
         id: user.id,
         email: user.email,
         name: user.name,
+        phone: user.phone,
         defaultCurrency: user.defaultCurrency,
         upiId: user.upiId,
         createdAt: user.createdAt,
@@ -174,6 +205,7 @@ export class UsersService {
           // while guaranteeing the old identity can never be reused or contacted.
           email: `deleted+${userId}@deleted.invalid`,
           authSubject: `deleted:${userId}`,
+          phone: null,
           upiId: null,
         },
       });

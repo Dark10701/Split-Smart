@@ -13,6 +13,7 @@ import {
   type Transfer,
 } from '../lib/api';
 import { Modal } from './ui';
+import { openUpiPayment } from '../lib/upi';
 
 function newKey(): string {
   return `settle-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -80,17 +81,18 @@ export function SettleUpModal({
 
   const payViaUpi = (): void => {
     setError(null);
-    if (!upiUri) return setError('Enter a valid amount first');
+    if (!payeeVpa || amountMinor === null || amountMinor <= 0)
+      return setError('Enter a valid amount first');
     setMethod('upi');
-    // Hand off to the UPI app without unloading the SPA. If no handler exists
-    // (e.g. desktop), the click is a no-op and the user stays here — the QR
-    // and copy button cover that case.
-    const a = document.createElement('a');
-    a.href = upiUri;
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    // Generic upi:// deep link — the OS opens GPay/PhonePe/etc. or shows its
+    // chooser. On desktop (no handler) it's a no-op; the QR and copy button
+    // below cover that case.
+    openUpiPayment({
+      payeeVpa,
+      payeeName: memberName(members, to),
+      amountPaise: amountMinor,
+      note: `SplitSmart · ${group.name}`,
+    });
     setUpiOpened(true);
   };
 

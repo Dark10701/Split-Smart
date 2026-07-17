@@ -22,6 +22,8 @@ export const authClaimsSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1).optional(),
   email_verified: z.literal(true),
+  /** OIDC standard claim; E.164. Present when the IdP collected a mobile number. */
+  phone_number: z.string().optional(),
 });
 export type AuthClaims = z.infer<typeof authClaimsSchema>;
 
@@ -104,6 +106,39 @@ export const updateNotificationPrefsSchema = z.object({
 });
 export type UpdateNotificationPrefsInput = z.infer<typeof updateNotificationPrefsSchema>;
 
+// ---------------------------------------------------------------------------
+// Mobile numbers. India-first: accept `9876543210`, `09876543210`,
+// `+91 98765 43210` etc. and normalize to E.164 (+919876543210). Indian mobile
+// numbers are 10 digits starting 6-9.
+// ---------------------------------------------------------------------------
+
+/** Normalize user input to +91XXXXXXXXXX, or null when not a valid Indian mobile. */
+export function normalizePhoneInput(raw: string): string | null {
+  const digits = raw.replace(/[\s\-().]/g, '');
+  const m = /^(?:\+?91|0)?([6-9]\d{9})$/.exec(digits);
+  return m ? `+91${m[1]}` : null;
+}
+
+/** Phone input schema: validates and normalizes to E.164. */
+export const phoneInputSchema = z
+  .string()
+  .min(10)
+  .max(20)
+  .transform((raw, ctx) => {
+    const phone = normalizePhoneInput(raw);
+    if (!phone) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Must be a valid Indian mobile number (10 digits starting 6-9)',
+      });
+      return z.NEVER;
+    }
+    return phone;
+  });
+
+/** Password: length is the only rule that reliably helps (NIST 800-63B). */
+export const passwordSchema = z.string().min(8).max(128);
+
 /** Avatar color: a #rrggbb hex value (the web/mobile pickers offer a palette). */
 export const avatarColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a #rrggbb color');
 
@@ -114,6 +149,7 @@ export const updateMeSchema = z
     defaultCurrency: currencyCodeSchema.optional(),
     upiId: upiIdInputSchema.nullable().optional(),
     avatarColor: avatarColorSchema.nullable().optional(),
+    phone: phoneInputSchema.nullable().optional(),
   })
   .refine((v) => Object.values(v).some((field) => field !== undefined), {
     message: 'Provide at least one field to update',
@@ -307,3 +343,22 @@ export const createPaymentIntentSchema = z
     message: 'A member cannot pay themselves',
   });
 export type CreatePaymentIntentInput = z.infer<typeof createPaymentIntentSchema>;
+
+// ---------------------------------------------------------------------------
+// Friends (phone-based friend system)
+// ---------------------------------------------------------------------------
+
+/** GET /friends/search?q= — phone, email, or name fragment. */
+export const friendSearchQuerySchema = z.object({
+  q: z.string().trim().min(2).max(120),
+});
+export type FriendSearchQuery = z.infer<typeof friendSearchQuerySchema>;
+
+/** POST /friends/requests — ask another user to connect. */
+export const sendFriendRequestSchema = z.object({
+  userId: z.string().uuid(),
+});
+export type SendFriendRequestInput = z.infer<typeof sendFriendRequestSchema>;
+
+export const friendshipStatusSchema = z.enum(['pending', 'accepted', 'blocked']);
+export type FriendshipStatusValue = z.infer<typeof friendshipStatusSchema>;

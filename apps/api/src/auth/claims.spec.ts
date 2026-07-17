@@ -13,7 +13,27 @@ describe('claimsToUserUpsert', () => {
       authSubject: 'auth0|9',
       email: 'sam@example.com',
       name: 'Sam',
+      phone: null,
     });
+  });
+
+  it('normalizes the phone_number claim and rejects invalid ones', () => {
+    expect(
+      claimsToUserUpsert({
+        sub: 'a|1',
+        email: 'x@y.com',
+        email_verified: true as const,
+        phone_number: '98765 43210',
+      }).phone,
+    ).toBe('+919876543210');
+    expect(
+      claimsToUserUpsert({
+        sub: 'a|1',
+        email: 'x@y.com',
+        email_verified: true as const,
+        phone_number: 'garbage',
+      }).phone,
+    ).toBeNull();
   });
 
   it('falls back to email local-part when name is missing', () => {

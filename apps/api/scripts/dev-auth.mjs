@@ -21,6 +21,7 @@
 import http from 'node:http';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { generateKeyPair, exportJWK, importJWK, SignJWT } from 'jose';
 
 // Dev convenience: log request-handling errors instead of dying — a crashed
@@ -55,11 +56,16 @@ try {
   );
 }
 
-async function mint(sub, email, name) {
+async function mint(sub, email, name, phone) {
   // email_verified is only ever set on tokens minted AFTER the user proved
   // ownership (OTP flow below) or for the pre-verified demo users — the API
-  // rejects tokens without it.
-  return new SignJWT({ email, name, email_verified: true })
+  // rejects tokens without it. phone_number is the standard OIDC claim.
+  return new SignJWT({
+    email,
+    name,
+    email_verified: true,
+    ...(phone ? { phone_number: phone } : {}),
+  })
     .setProtectedHeader({ alg: 'RS256', kid: 'dev-key-1' })
     .setSubject(sub)
     .setIssuer(ISSUER)
@@ -67,6 +73,67 @@ async function mint(sub, email, name) {
     .setIssuedAt()
     .setExpirationTime('12h')
     .sign(privateKey);
+}
+
+// ---------------------------------------------------------------------------
+// Password accounts (dev stand-in for the IdP's credential store; a real
+// Auth0/Clerk tenant replaces all of this in production). scrypt-hashed
+// passwords in a gitignored JSON file next to this script.
+// ---------------------------------------------------------------------------
+const ACCOUNTS_FILE = fileURLToPath(new URL('./.dev-auth-users.json', import.meta.url));
+/** email → { name, phone, upiId, salt, hash } */
+let accounts = {};
+try {
+  accounts = JSON.parse(readFileSync(ACCOUNTS_FILE, 'utf8'));
+} catch {
+  /* first run */
+}
+function saveAccounts() {
+  writeFileSync(ACCOUNTS_FILE, JSON.stringify(accounts, null, 2));
+}
+function hashPassword(password) {
+  const salt = randomBytes(16).toString('hex');
+  const hash = scryptSync(password, salt, 64).toString('hex');
+  return { salt, hash };
+}
+function verifyPassword(password, salt, hash) {
+  const candidate = scryptSync(password, salt, 64);
+  const stored = Buffer.from(hash, 'hex');
+  return candidate.length === stored.length && timingSafeEqual(candidate, stored);
+}
+/** Normalize to +91XXXXXXXXXX; null when not a valid Indian mobile. */
+function normalizePhone(raw) {
+  const digits = String(raw ?? '').replace(/[\s\-().]/g, '');
+  const m = /^(?:\+?91|0)?([6-9]\d{9})$/.exec(digits);
+  return m ? `+91${m[1]}` : null;
+}
+function findByIdentifier(identifier) {
+  const id = String(identifier ?? '').trim();
+  const phone = normalizePhone(id);
+  const email = id.toLowerCase();
+  for (const [accEmail, acc] of Object.entries(accounts)) {
+    if (accEmail === email || (phone && acc.phone === phone)) {
+      return { email: accEmail, ...acc };
+    }
+  }
+  return null;
+}
+/** Read a JSON request body (small, dev-only). */
+function readJson(req) {
+  return new Promise((resolve) => {
+    let raw = '';
+    req.on('data', (c) => {
+      raw += c;
+      if (raw.length > 100_000) req.destroy();
+    });
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(raw || '{}'));
+      } catch {
+        resolve(null);
+      }
+    });
+  });
 }
 
 const users = [
@@ -114,12 +181,17 @@ http
   .createServer(async (req, res) => {
     // Dev-only: let the local web app fetch a token instead of hand-pasting one.
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
       res.end();
       return;
     }
+    const json = (status, body) => {
+      res.writeHead(status, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(body));
+    };
 
     const url = new URL(req.url, ISSUER);
 
@@ -127,6 +199,67 @@ http
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ keys: [jwk] }));
       return;
+    }
+
+    // POST /register — create a password account. Requires the OTP code sent
+    // to the email (proof of ownership) plus name, unique phone, password.
+    if (url.pathname === '/register' && req.method === 'POST') {
+      const body = await readJson(req);
+      if (!body) return json(400, { error: 'Malformed request' });
+      const email = String(body.email ?? '')
+        .trim()
+        .toLowerCase();
+      const name = String(body.name ?? '').trim();
+      const password = String(body.password ?? '');
+      const phone = normalizePhone(body.phone);
+      const upiId = String(body.upiId ?? '').trim() || null;
+
+      if (!EMAIL_RE.test(email)) return json(400, { error: 'Enter a valid email address' });
+      if (!name) return json(400, { error: 'Enter your full name' });
+      if (!phone)
+        return json(400, { error: 'Enter a valid Indian mobile number (10 digits, starts 6-9)' });
+      if (password.length < 8)
+        return json(400, { error: 'Password must be at least 8 characters' });
+      if (accounts[email]) return json(409, { error: 'An account with this email already exists' });
+      if (Object.values(accounts).some((a) => a.phone === phone))
+        return json(409, { error: 'An account with this mobile number already exists' });
+
+      const otp = verifyOtp(email, String(body.code ?? ''));
+      if (otp.error) return json(401, { error: otp.error });
+
+      accounts[email] = { name, phone, upiId, ...hashPassword(password) };
+      saveAccounts();
+      const token = await mint(`dev|${email}`, email, name, phone);
+      console.log(`\n👤 Registered ${name} <${email}> (${phone})\n`);
+      return json(200, { token, name, email, upiId });
+    }
+
+    // POST /login — email OR mobile number + password.
+    if (url.pathname === '/login' && req.method === 'POST') {
+      const body = await readJson(req);
+      if (!body) return json(400, { error: 'Malformed request' });
+      const acc = findByIdentifier(body.identifier);
+      if (!acc || !verifyPassword(String(body.password ?? ''), acc.salt, acc.hash)) {
+        return json(401, { error: 'Wrong email/mobile number or password' });
+      }
+      const token = await mint(`dev|${acc.email}`, acc.email, acc.name, acc.phone);
+      return json(200, { token, name: acc.name, email: acc.email });
+    }
+
+    // POST /password/change — requires the current password.
+    if (url.pathname === '/password/change' && req.method === 'POST') {
+      const body = await readJson(req);
+      if (!body) return json(400, { error: 'Malformed request' });
+      const acc = findByIdentifier(body.identifier);
+      if (!acc || !verifyPassword(String(body.current ?? ''), acc.salt, acc.hash)) {
+        return json(401, { error: 'Current password is wrong' });
+      }
+      const next = String(body.next ?? '');
+      if (next.length < 8)
+        return json(400, { error: 'New password must be at least 8 characters' });
+      accounts[acc.email] = { ...accounts[acc.email], ...hashPassword(next) };
+      saveAccounts();
+      return json(200, { ok: true });
     }
 
     // GET /otp/request?email=&name= → generate a verification code for the

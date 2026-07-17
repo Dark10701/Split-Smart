@@ -300,7 +300,7 @@ function QuickActions({
         </span>
         Friends
       </a>
-      <a className="quick-tile" href="/profile">
+      <a className="quick-tile" href="/upi">
         <span className="qt-icon">
           <ActionIcon path="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM17 14v3M14 17h3M17 20v.01M20 17v3" />
         </span>

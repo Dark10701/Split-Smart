@@ -6,9 +6,31 @@ export interface Me {
   id: string;
   email: string;
   name: string;
+  phone: string | null;
   defaultCurrency: string;
   upiId: string | null;
   avatarColor: string | null;
+}
+
+/** Another user, as exposed by the friends API (never auth internals). */
+export interface PublicUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  upiId: string | null;
+  avatarColor: string | null;
+}
+
+export interface FriendSearchHit extends PublicUser {
+  relationship: 'none' | 'friends' | 'request_sent' | 'request_received' | 'blocked';
+}
+
+export interface FriendsOverview {
+  friends: PublicUser[];
+  incoming: Array<{ friendshipId: string; user: PublicUser }>;
+  outgoing: Array<{ friendshipId: string; user: PublicUser }>;
+  blocked: PublicUser[];
 }
 
 export interface NotificationPref {
@@ -138,7 +160,12 @@ export const api = {
   me: (token: string) => fetch(`${API_URL}/me`, { headers: headers(token) }).then(unwrap<Me>),
   updateMe: (
     token: string,
-    body: { name?: string; upiId?: string | null; avatarColor?: string | null },
+    body: {
+      name?: string;
+      upiId?: string | null;
+      avatarColor?: string | null;
+      phone?: string | null;
+    },
   ) =>
     fetch(`${API_URL}/me`, {
       method: 'PATCH',
@@ -158,6 +185,38 @@ export const api = {
       headers: headers(token),
       body: JSON.stringify({ prefs }),
     }).then(unwrap<NotificationPref[]>),
+  friendsOverview: (token: string) =>
+    fetch(`${API_URL}/friends`, { headers: headers(token) }).then(unwrap<FriendsOverview>),
+  searchFriends: (token: string, q: string) =>
+    fetch(`${API_URL}/friends/search?q=${encodeURIComponent(q)}`, {
+      headers: headers(token),
+    }).then(unwrap<FriendSearchHit[]>),
+  sendFriendRequest: (token: string, userId: string) =>
+    fetch(`${API_URL}/friends/requests`, {
+      method: 'POST',
+      headers: headers(token),
+      body: JSON.stringify({ userId }),
+    }).then(unwrap<{ id: string; status: string }>),
+  respondFriendRequest: (token: string, friendshipId: string, accept: boolean) =>
+    fetch(`${API_URL}/friends/requests/${friendshipId}/${accept ? 'accept' : 'reject'}`, {
+      method: 'POST',
+      headers: headers(token),
+    }).then(unwrap<{ ok: true }>),
+  removeFriend: (token: string, userId: string) =>
+    fetch(`${API_URL}/friends/${userId}`, {
+      method: 'DELETE',
+      headers: headers(token),
+    }).then(unwrap<{ ok: true }>),
+  blockUser: (token: string, userId: string) =>
+    fetch(`${API_URL}/friends/${userId}/block`, {
+      method: 'POST',
+      headers: headers(token),
+    }).then(unwrap<{ ok: true }>),
+  unblockUser: (token: string, userId: string) =>
+    fetch(`${API_URL}/friends/${userId}/block`, {
+      method: 'DELETE',
+      headers: headers(token),
+    }).then(unwrap<{ ok: true }>),
   listGroups: (token: string) =>
     fetch(`${API_URL}/groups`, { headers: headers(token) }).then(unwrap<Group[]>),
   createGroup: (token: string, name: string) =>
