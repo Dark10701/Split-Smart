@@ -52,6 +52,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [upi, setUpi] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +70,7 @@ export default function ProfilePage() {
       setMe(profile);
       setPrefs(notifPrefs);
       setName(profile.name);
+      setPhone(profile.phone ?? '');
       setUpi(profile.upiId ?? '');
       setLoadError(false);
     } catch (e) {
@@ -95,8 +97,10 @@ export default function ProfilePage() {
     setError(null);
     setMsg(null);
     if (!token || !me) return;
-    const body: { name?: string; upiId?: string | null } = {};
+    const body: { name?: string; upiId?: string | null; phone?: string | null } = {};
     if (name.trim() && name.trim() !== me.name) body.name = name.trim();
+    const ph = phone.trim();
+    if (ph !== (me.phone ?? '')) body.phone = ph === '' ? null : ph;
     const u = upi.trim();
     if (u !== (me.upiId ?? '')) body.upiId = u === '' ? null : u;
     if (Object.keys(body).length === 0) {
@@ -107,6 +111,7 @@ export default function ProfilePage() {
     try {
       const updated = await api.updateMe(token, body);
       setMe(updated);
+      setPhone(updated.phone ?? '');
       setUpi(updated.upiId ?? '');
       setMsg(
         body.upiId === null
@@ -118,8 +123,10 @@ export default function ProfilePage() {
     } catch (e) {
       setError(
         e instanceof ApiError && e.status === 400
-          ? 'That does not look like a valid UPI ID or UPI link'
-          : 'Could not save your profile',
+          ? 'Check the UPI ID and mobile number formats'
+          : e instanceof ApiError && e.status === 409
+            ? 'That mobile number is already linked to another account'
+            : 'Could not save your profile',
       );
     } finally {
       setSaving(false);
@@ -177,9 +184,15 @@ export default function ProfilePage() {
               <Avatar name={me.name} size={76} color={me.avatarColor} />
             </div>
             <div style={{ fontWeight: 700, fontSize: 19 }}>{me.name}</div>
-            <div className="muted" style={{ fontSize: 14, marginBottom: 14 }}>
+            <div className="muted" style={{ fontSize: 14 }}>
               {me.email}
             </div>
+            {me.phone && (
+              <div className="faint" style={{ fontSize: 13, marginBottom: 14 }}>
+                {me.phone}
+              </div>
+            )}
+            {!me.phone && <div style={{ marginBottom: 14 }} />}
 
             <div className="section-title" style={{ textAlign: 'left' }}>
               Avatar color
@@ -226,6 +239,23 @@ export default function ProfilePage() {
               />
             </div>
             <div className="field">
+              <label className="label" htmlFor="phone">
+                Mobile number
+              </label>
+              <input
+                id="phone"
+                className="input"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="98765 43210"
+              />
+              <p className="faint" style={{ fontSize: 13, margin: '7px 0 0' }}>
+                Friends find you by this number. It must be unique to your account.
+              </p>
+            </div>
+            <div className="field">
               <label className="label" htmlFor="upi">
                 UPI ID
               </label>
@@ -253,6 +283,44 @@ export default function ProfilePage() {
               {saving ? 'Saving…' : 'Save changes'}
             </button>
           </div>
+
+          {/* ---- My UPI QR ---- */}
+          <a
+            className="card card-pad card-hover between"
+            href="/upi"
+            style={{ textDecoration: 'none', color: 'inherit' }}
+          >
+            <div className="row" style={{ gap: 12 }}>
+              <span
+                aria-hidden
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  display: 'grid',
+                  placeItems: 'center',
+                  background: 'var(--primary-soft)',
+                  color: 'var(--primary)',
+                  fontSize: 20,
+                }}
+              >
+                ⛶
+              </span>
+              <div>
+                <div style={{ fontWeight: 700 }}>My UPI QR</div>
+                <div className="faint" style={{ fontSize: 13 }}>
+                  {me.upiId
+                    ? `View, download, or share the QR for ${me.upiId}`
+                    : 'Add a UPI ID to get your payment QR'}
+                </div>
+              </div>
+            </div>
+            <span className="faint" aria-hidden style={{ fontSize: 18 }}>
+              ›
+            </span>
+          </a>
+
+          <ChangePasswordCard email={me.email} />
 
           {/* ---- Notifications ---- */}
           <div className="card card-pad">
@@ -317,5 +385,117 @@ export default function ProfilePage() {
         </div>
       ) : null}
     </AppShell>
+  );
+}
+
+/**
+ * Change password against the identity provider (the local dev issuer here; a
+ * real IdP's own flow in production). Demo accounts have no password, so this
+ * simply reports what the issuer says.
+ */
+function ChangePasswordCard({ email }: { email: string }) {
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const change = async (): Promise<void> => {
+    setErr(null);
+    setMsg(null);
+    if (next.length < 8) {
+      setErr('New password must be at least 8 characters');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_DEV_AUTH_URL ?? 'http://localhost:3999'}/password/change`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: email, current, next }),
+        },
+      );
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setErr(data.error ?? 'Could not change the password');
+        return;
+      }
+      setMsg('Password changed');
+      setCurrent('');
+      setNext('');
+      setOpen(false);
+    } catch {
+      setErr('Could not reach the auth service');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card card-pad">
+      <div className="between">
+        <div>
+          <div style={{ fontWeight: 600 }}>Change password</div>
+          <div className="faint" style={{ fontSize: 13 }}>
+            For accounts created with email + password
+          </div>
+        </div>
+        <button
+          className="btn btn-ghost btn-sm"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+        >
+          {open ? 'Close' : 'Change'}
+        </button>
+      </div>
+      {msg && !open && (
+        <p className="success-text" style={{ margin: '10px 0 0' }}>
+          {msg}
+        </p>
+      )}
+      {open && (
+        <div style={{ marginTop: 14 }}>
+          <div className="field">
+            <label className="label" htmlFor="pw-current">
+              Current password
+            </label>
+            <input
+              id="pw-current"
+              className="input"
+              type="password"
+              autoComplete="current-password"
+              value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label className="label" htmlFor="pw-next">
+              New password
+            </label>
+            <input
+              id="pw-next"
+              className="input"
+              type="password"
+              autoComplete="new-password"
+              placeholder="At least 8 characters"
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void change()}
+            />
+          </div>
+          {err && <p className="error">{err}</p>}
+          <button
+            className="btn btn-primary btn-block"
+            onClick={() => void change()}
+            disabled={busy || !current || !next}
+          >
+            {busy ? 'Changing…' : 'Update password'}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

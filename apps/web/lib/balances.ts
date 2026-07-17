@@ -13,8 +13,8 @@ export interface FriendBalance {
   /** owesMe − iOwe. Positive = they owe me; negative = I owe them. */
   netMinor: number;
   currency: string;
-  /** Names of the groups this balance spans, for context. */
-  groups: string[];
+  /** Groups this balance spans (id + name), for context and deep links. */
+  groups: Array<{ id: string; name: string }>;
 }
 
 export interface GroupBundle {
@@ -52,7 +52,8 @@ export function computeFriends(me: Me, bundles: GroupBundle[]): FriendBalance[] 
         };
         byFriend.set(key, f);
       }
-      if (!f.groups.includes(group.name)) f.groups.push(group.name);
+      if (!f.groups.some((g) => g.id === group.id))
+        f.groups.push({ id: group.id, name: group.name });
       return f;
     };
 

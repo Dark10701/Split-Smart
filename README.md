@@ -47,8 +47,10 @@ up just prints the URL instead of failing halfway.
 
 The launcher creates missing development environment files, starts Postgres and Redis in Docker,
 waits for the database, applies Prisma migrations, and starts the local auth issuer, API, and web
-app in one terminal. Open **http://localhost:3000**, sign in with your email (a 6-digit
-verification code is shown in dev — real deployments email it), or use a pre-verified demo user.
+app in one terminal. Open **http://localhost:3000** and either use a pre-verified demo user or
+**create an account** (name, email, mobile number, password — the email
+verification code is shown on-screen in dev; real deployments email it). Sign
+in later with your email *or* mobile number + password.
 Press `Ctrl+C` to stop the app processes; Docker services remain running for the next launch.
 
 ### Manual setup (optional — you almost never need this)

@@ -59,3 +59,4 @@ crash.log
 
 # Local dev auth issuer keypair (dev-only, never commit)
 .dev-auth-key.json
+.dev-auth-users.json

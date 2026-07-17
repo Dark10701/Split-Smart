@@ -6,6 +6,7 @@ const me: Me = {
   id: 'user-me',
   email: 'me@x.com',
   name: 'Me',
+  phone: null,
   defaultCurrency: 'INR',
   upiId: null,
   avatarColor: null,
@@ -67,7 +68,7 @@ describe('computeFriends', () => {
     expect(maya.iOweMinor).toBe(25000);
     expect(maya.owesMeMinor).toBe(10000);
     expect(maya.netMinor).toBe(-15000); // I owe 150 net
-    expect(maya.groups.sort()).toEqual(['Flat', 'Goa']);
+    expect(maya.groups.map((g) => g.name).sort()).toEqual(['Flat', 'Goa']);
   });
 
   it('ignores settlements that do not involve me', () => {

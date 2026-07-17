@@ -16,6 +16,8 @@ import {
   createPaymentIntentSchema,
   normalizeUpiInput,
   upiIdInputSchema,
+  normalizePhoneInput,
+  phoneInputSchema,
   updateNotificationPrefsSchema,
 } from './index';
 
@@ -54,6 +56,27 @@ describe('validation', () => {
     expect(updateMeSchema.safeParse({ name: 'New' }).success).toBe(true);
     expect(updateMeSchema.safeParse({ defaultCurrency: 'eur' }).success).toBe(false);
     expect(updateMeSchema.safeParse({ defaultCurrency: 'EUR' }).success).toBe(true);
+  });
+
+  it('normalizes Indian mobile numbers to E.164 and rejects invalid ones', () => {
+    expect(normalizePhoneInput('9876543210')).toBe('+919876543210');
+    expect(normalizePhoneInput('09876543210')).toBe('+919876543210');
+    expect(normalizePhoneInput('+91 98765 43210')).toBe('+919876543210');
+    expect(normalizePhoneInput('91-9876543210')).toBe('+919876543210');
+    expect(normalizePhoneInput('5876543210')).toBeNull(); // starts with 5
+    expect(normalizePhoneInput('98765')).toBeNull(); // too short
+    expect(normalizePhoneInput('98765432101')).toBeNull(); // 11 digits, no prefix
+    expect(phoneInputSchema.safeParse('98765 43210').success).toBe(true);
+    expect(phoneInputSchema.parse('9876543210')).toBe('+919876543210');
+    expect(phoneInputSchema.safeParse('1234567890').success).toBe(false);
+  });
+
+  it('updateMe accepts a phone and null to clear it', () => {
+    const ok = updateMeSchema.safeParse({ phone: '9876543210' });
+    expect(ok.success).toBe(true);
+    if (ok.success) expect(ok.data.phone).toBe('+919876543210');
+    expect(updateMeSchema.safeParse({ phone: null }).success).toBe(true);
+    expect(updateMeSchema.safeParse({ phone: 'abc' }).success).toBe(false);
   });
 
   it('updateMe validates avatarColor as #rrggbb and allows null to reset', () => {
