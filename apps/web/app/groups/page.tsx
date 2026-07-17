@@ -4,7 +4,16 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 import { api, ApiError, formatMoney, type Group } from '../../lib/api';
-import { AppShell, Avatar, Modal, SkeletonList, ErrorState } from '../../components/ui';
+import {
+  AppShell,
+  Avatar,
+  Modal,
+  SkeletonList,
+  ErrorState,
+  Toast,
+  type ToastState,
+} from '../../components/ui';
+import { Scene } from '../../components/Scene';
 
 /** A group plus this user's net balance in it (positive = owed to you). */
 interface GroupRow {
@@ -13,19 +22,29 @@ interface GroupRow {
   currency: string;
 }
 
+function greetingWord(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export default function GroupsPage() {
   const { token, ready, signOut } = useAuth();
   const router = useRouter();
   const [rows, setRows] = useState<GroupRow[]>([]);
+  const [firstName, setFirstName] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   const refresh = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     try {
       const [me, groups] = await Promise.all([api.me(token), api.listGroups(token)]);
+      setFirstName(me.name.split(/\s+/)[0] ?? me.name);
       // For each group, resolve this user's net from the balance engine.
       const withBalances = await Promise.all(
         groups.map(async (group): Promise<GroupRow> => {
@@ -67,6 +86,7 @@ export default function GroupsPage() {
   // Overall position across groups sharing the primary currency (INR v1).
   const currency = rows[0]?.currency ?? 'INR';
   const overall = rows.reduce((sum, r) => sum + (r.net ?? 0), 0);
+  const newestGroupId = rows[0]?.group.id;
 
   return (
     <AppShell
@@ -80,14 +100,29 @@ export default function GroupsPage() {
     >
       {loading ? (
         <>
-          <div className="skeleton" style={{ height: 92, marginBottom: 16 }} />
+          <div className="skeleton" style={{ height: 132, marginBottom: 16, borderRadius: 24 }} />
+          <div className="skeleton" style={{ height: 84, marginBottom: 18, borderRadius: 18 }} />
           <SkeletonList rows={3} />
         </>
       ) : loadError ? (
         <ErrorState message="Could not load your groups" onRetry={() => void refresh()} />
       ) : (
         <>
-          <OverallHero overall={overall} currency={currency} hasGroups={rows.length > 0} />
+          <div className="greeting">
+            <h1>
+              {greetingWord()}
+              {firstName ? `, ${firstName}` : ''} 👋
+            </h1>
+            <div className="sub">Here&apos;s where your money stands.</div>
+          </div>
+
+          <Scene />
+
+          <QuickActions onNewGroup={() => setCreating(true)} newestGroupId={newestGroupId} />
+
+          <div style={{ marginTop: 18 }}>
+            <BalanceHero overall={overall} currency={currency} hasGroups={rows.length > 0} />
+          </div>
 
           {rows.length === 0 ? (
             <div className="card empty" style={{ marginTop: 16 }}>
@@ -99,16 +134,16 @@ export default function GroupsPage() {
                 style={{ marginTop: 16 }}
                 onClick={() => setCreating(true)}
               >
-                Create a group
+                Create your first group
               </button>
             </div>
           ) : (
-            <div className="section-title" style={{ margin: '20px 0 8px' }}>
+            <div className="section-title" style={{ margin: '22px 0 8px' }}>
               Your groups
             </div>
           )}
 
-          <div className="stack" style={{ gap: 10 }}>
+          <div className="stack stagger" style={{ gap: 10 }}>
             {rows.map(({ group, net, currency }) => (
               <a
                 key={group.id}
@@ -170,15 +205,19 @@ export default function GroupsPage() {
           onClose={() => setCreating(false)}
           onCreated={() => {
             setCreating(false);
+            setToast({ message: 'Group created', kind: 'success' });
             void refresh();
           }}
         />
       )}
+
+      <Toast toast={toast} onDone={() => setToast(null)} />
     </AppShell>
   );
 }
 
-function OverallHero({
+/** The gradient "total balance" showcase card. */
+function BalanceHero({
   overall,
   currency,
   hasGroups,
@@ -187,22 +226,86 @@ function OverallHero({
   currency: string;
   hasGroups: boolean;
 }) {
-  if (!hasGroups) return null;
-  if (overall === 0) {
-    return (
-      <div className="hero">
-        <div className="hero-label">Overall</div>
-        <div className="hero-amount">You&apos;re all settled up 🎉</div>
-      </div>
-    );
-  }
   const owed = overall > 0;
+  const settled = overall === 0;
   return (
-    <div className="hero">
-      <div className="hero-label">{owed ? 'Overall, you are owed' : 'Overall, you owe'}</div>
-      <div className={`hero-amount ${owed ? 'pos' : 'neg'}`}>
-        {formatMoney(Math.abs(overall), currency)}
+    <div className="balance-hero">
+      <div className="bh-label">
+        {!hasGroups || settled ? 'Your balance' : owed ? 'You are owed overall' : 'You owe overall'}
       </div>
+      <div className="bh-amount">
+        {!hasGroups || settled
+          ? formatMoney(0, currency)
+          : formatMoney(Math.abs(overall), currency)}
+      </div>
+      <div className="bh-sub">
+        {!hasGroups
+          ? 'Create a group to start tracking shared expenses.'
+          : settled
+            ? "You're all settled up 🎉"
+            : owed
+              ? 'Money your friends still owe you.'
+              : 'What you still need to settle.'}
+      </div>
+    </div>
+  );
+}
+
+function ActionIcon({ path }: { path: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d={path} />
+    </svg>
+  );
+}
+
+/** GPay-style row of rounded shortcut tiles for the most common actions. */
+function QuickActions({
+  onNewGroup,
+  newestGroupId,
+}: {
+  onNewGroup: () => void;
+  newestGroupId?: string;
+}) {
+  const router = useRouter();
+  return (
+    <div className="quick-grid" style={{ marginTop: 16 }}>
+      <button className="quick-tile qt-green" onClick={onNewGroup}>
+        <span className="qt-icon">
+          <ActionIcon path="M12 5v14M5 12h14" />
+        </span>
+        New group
+      </button>
+      <button
+        className="quick-tile"
+        onClick={() => newestGroupId && router.push(`/groups/${newestGroupId}?new=1`)}
+        disabled={!newestGroupId}
+      >
+        <span className="qt-icon">
+          <ActionIcon path="M9 14h6M12 11v6M5 7h14M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" />
+        </span>
+        Add expense
+      </button>
+      <a className="quick-tile" href="/friends">
+        <span className="qt-icon">
+          <ActionIcon path="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+        </span>
+        Friends
+      </a>
+      <a className="quick-tile" href="/profile">
+        <span className="qt-icon">
+          <ActionIcon path="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM17 14v3M14 17h3M17 20v.01M20 17v3" />
+        </span>
+        My UPI
+      </a>
     </div>
   );
 }

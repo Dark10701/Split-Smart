@@ -364,6 +364,7 @@ Run against a live API + Postgres + Redis (`docker compose up -d`, `prisma migra
 - [x] **M6.5-12** Login is the first screen: removed the marketing landing; root redirects to `/groups` (signed in) or `/login`.
 - [x] **M6.5-13** Friends tab: new `/friends` route + 3rd bottom-nav item. Cross-group per-person balances (you-owe / owes-you / net) computed from the simplified settle-up graph so it stays consistent with in-group suggestions; recomputes on each visit. Unit-tested (`lib/balances.test.ts`).
 - [x] **M6.5-14** Group balance sheet export: members, total expenses, per-member contributions + shares, outstanding who-owes-whom, full dated expense history. Professional multi-section **PDF** (jsPDF + autotable) and **CSV** (Excel-safe UTF-8), generated client-side. Verified reconciliation + live download.
+- [x] **M6.5-15** GPay-style visual redesign: illustrated theme-aware landscape scene (pure SVG on `--sc-*` vars: night on dark, daytime on light), big blue quick-action tiles with labels below, gradient balance card, greeting header, soft card shadows + hover lift, pill-highlight bottom nav, toasts for group-created/expense-added/payment-recorded, list entrance stagger, tinted radial-wash app background, `prefers-reduced-motion` respected. Dark default per the GPay reference; light theme fully mapped on the toggle.
 
 ---
 
