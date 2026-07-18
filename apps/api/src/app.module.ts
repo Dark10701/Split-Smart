@@ -7,6 +7,7 @@ import { RedisModule } from './redis/redis.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { FriendsModule } from './friends/friends.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { GroupsModule } from './groups/groups.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { BalancesModule } from './balances/balances.module';
@@ -35,6 +36,7 @@ import { MetricsModule } from './common/metrics/metrics.module';
     AuthModule,
     UsersModule,
     FriendsModule,
+    DashboardModule,
     GroupsModule,
     ExpensesModule,
     BalancesModule,

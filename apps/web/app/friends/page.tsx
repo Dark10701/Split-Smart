@@ -9,9 +9,9 @@ import {
   formatMoney,
   type FriendsOverview,
   type FriendSearchHit,
+  type FriendBalance,
   type PublicUser,
 } from '../../lib/api';
-import { computeFriends, type FriendBalance } from '../../lib/balances';
 import { openUpiPayment } from '../../lib/upi';
 import {
   AppShell,
@@ -38,20 +38,11 @@ export default function FriendsPage() {
     if (!token) return;
     setLoading(true);
     try {
-      const [me, groups, ov] = await Promise.all([
-        api.me(token),
-        api.listGroups(token),
-        api.friendsOverview(token),
-      ]);
-      const bundles = await Promise.all(
-        groups.map(async (g) => ({
-          group: await api.getGroup(token, g.id),
-          balances: await api.getBalances(token, g.id),
-        })),
-      );
-      setBalances(computeFriends(me, bundles));
+      // Two batched calls replace the old per-group getGroup + getBalances fan-out.
+      const [ov, fb] = await Promise.all([api.friendsOverview(token), api.friendBalances(token)]);
+      setBalances(fb);
       setOverview(ov);
-      setCurrency(groups[0]?.defaultCurrency ?? 'INR');
+      setCurrency(fb[0]?.currency ?? 'INR');
       setLoadError(false);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {

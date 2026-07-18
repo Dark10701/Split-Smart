@@ -47,10 +47,10 @@ up just prints the URL instead of failing halfway.
 
 The launcher creates missing development environment files, starts Postgres and Redis in Docker,
 waits for the database, applies Prisma migrations, and starts the local auth issuer, API, and web
-app in one terminal. Open **http://localhost:3000** and either use a pre-verified demo user or
-**create an account** (name, email, mobile number, password — the email
-verification code is shown on-screen in dev; real deployments email it). Sign
-in later with your email *or* mobile number + password.
+app in one terminal. Open **http://localhost:3000** and **create an account**
+(name, email, mobile number, password — the email verification code is shown
+on-screen in dev; real deployments email it). Sign in later with your email
+*or* mobile number + password.
 Press `Ctrl+C` to stop the app processes; Docker services remain running for the next launch.
 
 ### Manual setup (optional — you almost never need this)
@@ -85,8 +85,7 @@ pnpm --filter @splitsmart/api prisma:deploy
 Now start the app. You need **three things running** — the auth issuer, the API, and the web client:
 
 ```bash
-# Terminal A — local dev auth issuer (stands in for Auth0/Clerk).
-# Prints bearer tokens for two demo users (Maya, Ravi). Leave it running.
+# Terminal A — local dev auth issuer (stands in for Auth0/Clerk). Leave it running.
 pnpm --filter @splitsmart/api dev:auth
 
 # Terminal B — the API (http://localhost:3001)
@@ -98,12 +97,11 @@ pnpm --filter @splitsmart/web dev
 
 Then:
 
-1. Open **http://localhost:3000** → **Sign in**.
-2. With the dev auth issuer (Terminal A) running, the Sign-in screen shows
-   **Continue as Maya / Ravi** buttons — click one to sign in instantly.
-   (You can still paste a token by hand; the issuer also prints them to Terminal A.)
-3. Create a group, add expenses, split them, and settle up. Sign in as the second
-   user (in a private window) to see shared membership and balances.
+1. Open **http://localhost:3000** → **Create account** (name, email, mobile,
+   password); enter the 6-digit code shown on-screen to verify → you're in.
+2. Sign in later with your email **or** mobile number + password.
+3. Create a group, add expenses, split them, and settle up. Register a second
+   account (in a private window) to see shared membership and balances.
 
 **Health check:** http://localhost:3001/health → `{"status":"ok"}`
 

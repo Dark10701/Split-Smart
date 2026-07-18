@@ -8,12 +8,6 @@ import { Scene } from '../../components/Scene';
 
 const DEV_AUTH_URL = process.env.NEXT_PUBLIC_DEV_AUTH_URL ?? 'http://localhost:3999';
 
-interface DevUser {
-  sub: string;
-  name: string;
-  email: string;
-}
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Mode = 'signin' | 'register' | 'register-code';
@@ -23,7 +17,6 @@ export default function LoginPage() {
   const router = useRouter();
 
   const [issuerUp, setIssuerUp] = useState(false);
-  const [devUsers, setDevUsers] = useState<DevUser[]>([]);
   const [mode, setMode] = useState<Mode>('signin');
 
   // Sign-in fields
@@ -45,12 +38,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${DEV_AUTH_URL}/token`)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((users: DevUser[]) => {
-        if (cancelled) return;
-        setIssuerUp(true);
-        setDevUsers(users);
+    fetch(`${DEV_AUTH_URL}/health`)
+      .then((r) => {
+        if (r.ok && !cancelled) setIssuerUp(true);
       })
       .catch(() => {
         /* issuer not running — manual token entry still works */
@@ -134,20 +124,6 @@ export default function LoginPage() {
       finish(t as string);
     } catch (e) {
       setError((e as Error).message);
-      setBusy(false);
-    }
-  };
-
-  const signInAs = async (user: DevUser): Promise<void> => {
-    setError(null);
-    setBusy(true);
-    try {
-      const res = await fetch(`${DEV_AUTH_URL}/token?user=${encodeURIComponent(user.sub)}`);
-      if (!res.ok) throw new Error();
-      const { token: t } = (await res.json()) as { token: string };
-      finish(t);
-    } catch {
-      setError('Could not reach the dev auth issuer.');
       setBusy(false);
     }
   };
@@ -237,28 +213,6 @@ export default function LoginPage() {
               >
                 {busy ? 'Signing in…' : 'Sign in'}
               </button>
-
-              {devUsers.length > 0 && (
-                <>
-                  <div className="divider" />
-                  <p className="faint" style={{ fontSize: 13, margin: '0 0 10px' }}>
-                    Or use a demo account (no password):
-                  </p>
-                  <div className="row">
-                    {devUsers.map((u) => (
-                      <button
-                        key={u.sub}
-                        className="btn btn-ghost btn-sm"
-                        style={{ flex: 1 }}
-                        disabled={busy}
-                        onClick={() => void signInAs(u)}
-                      >
-                        {u.name}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
             </>
           ) : mode === 'register' ? (
             <>
