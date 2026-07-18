@@ -65,6 +65,8 @@ model Friendship {
 
   @@unique([requesterId, addresseeId])
   @@index([addresseeId, status])
+  // Covers the reverse-direction edge lookup in FriendsService.edge().
+  @@index([requesterId, status])
 }
 
 enum NotificationChannel {

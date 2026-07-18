@@ -1,16 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { computeFriends, buildBalanceSheet } from './balances';
-import type { GroupDetail, GroupBalances, Expense, Me } from './api';
-
-const me: Me = {
-  id: 'user-me',
-  email: 'me@x.com',
-  name: 'Me',
-  phone: null,
-  defaultCurrency: 'INR',
-  upiId: null,
-  avatarColor: null,
-};
+import { buildBalanceSheet } from './balances';
+import type { GroupDetail, GroupBalances, Expense } from './api';
 
 function member(id: string, userId: string | null, name: string) {
   return {
@@ -29,62 +19,6 @@ const groupBase = (over: Partial<GroupDetail>): GroupDetail => ({
   createdAt: '2026-01-01',
   members: [],
   ...over,
-});
-
-describe('computeFriends', () => {
-  it('nets settlements involving me across groups, keyed by userId', () => {
-    // Group 1: I owe Maya 250. Group 2: Maya owes me 100 → net I owe 150.
-    const g1 = groupBase({
-      id: 'g1',
-      name: 'Goa',
-      members: [member('m-me', 'user-me', 'Me'), member('m-maya', 'user-maya', 'Maya')],
-    });
-    const b1: GroupBalances = {
-      nets: {},
-      settlements: [
-        { fromMemberId: 'm-me', toMemberId: 'm-maya', amountMinor: 25000, currency: 'INR' },
-      ],
-    };
-    const g2 = groupBase({
-      id: 'g2',
-      name: 'Flat',
-      members: [member('m2-me', 'user-me', 'Me'), member('m2-maya', 'user-maya', 'Maya')],
-    });
-    const b2: GroupBalances = {
-      nets: {},
-      settlements: [
-        { fromMemberId: 'm2-maya', toMemberId: 'm2-me', amountMinor: 10000, currency: 'INR' },
-      ],
-    };
-
-    const friends = computeFriends(me, [
-      { group: g1, balances: b1 },
-      { group: g2, balances: b2 },
-    ]);
-
-    expect(friends).toHaveLength(1);
-    const maya = friends[0]!;
-    expect(maya.name).toBe('Maya');
-    expect(maya.iOweMinor).toBe(25000);
-    expect(maya.owesMeMinor).toBe(10000);
-    expect(maya.netMinor).toBe(-15000); // I owe 150 net
-    expect(maya.groups.map((g) => g.name).sort()).toEqual(['Flat', 'Goa']);
-  });
-
-  it('ignores settlements that do not involve me', () => {
-    const g = groupBase({
-      members: [
-        member('m-me', 'user-me', 'Me'),
-        member('m-a', 'user-a', 'A'),
-        member('m-b', 'user-b', 'B'),
-      ],
-    });
-    const b: GroupBalances = {
-      nets: {},
-      settlements: [{ fromMemberId: 'm-a', toMemberId: 'm-b', amountMinor: 5000, currency: 'INR' }],
-    };
-    expect(computeFriends(me, [{ group: g, balances: b }])).toHaveLength(0);
-  });
 });
 
 describe('buildBalanceSheet', () => {

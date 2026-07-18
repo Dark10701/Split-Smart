@@ -33,6 +33,30 @@ export interface FriendsOverview {
   blocked: PublicUser[];
 }
 
+export interface DashboardGroup {
+  id: string;
+  name: string;
+  defaultCurrency: string;
+  myNetMinor: number;
+}
+export interface Dashboard {
+  overallNetMinor: number;
+  currency: string;
+  groups: DashboardGroup[];
+}
+
+/** Per-person balance aggregated across shared groups (Friends screen). */
+export interface FriendBalance {
+  key: string;
+  name: string;
+  avatarColor: string | null;
+  iOweMinor: number;
+  owesMeMinor: number;
+  netMinor: number;
+  currency: string;
+  groups: Array<{ id: string; name: string }>;
+}
+
 export interface NotificationPref {
   id: string;
   channel: 'push' | 'email' | 'sms' | 'in_app';
@@ -158,6 +182,12 @@ async function unwrap<T>(res: Response): Promise<T> {
 
 export const api = {
   me: (token: string) => fetch(`${API_URL}/me`, { headers: headers(token) }).then(unwrap<Me>),
+  dashboard: (token: string) =>
+    fetch(`${API_URL}/me/dashboard`, { headers: headers(token) }).then(unwrap<Dashboard>),
+  friendBalances: (token: string) =>
+    fetch(`${API_URL}/me/friend-balances`, { headers: headers(token) }).then(
+      unwrap<FriendBalance[]>,
+    ),
   updateMe: (
     token: string,
     body: {

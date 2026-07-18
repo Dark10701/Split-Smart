@@ -5,18 +5,20 @@
  * Rather than provision a real Auth0/Clerk tenant just to click around locally,
  * this script stands in for the identity provider:
  *
- *   1. generates an RS256 keypair in memory,
- *   2. serves a JWKS document at http://localhost:3999/jwks.json,
- *   3. prints a signed bearer token for a couple of dev users.
+ *   1. persists an RS256 keypair, serves JWKS at http://localhost:3999/jwks.json,
+ *   2. real account flow — register (OTP-verified email + mobile + password),
+ *      log in by email or mobile + password, change password,
+ *   3. mints OIDC tokens (with email_verified + phone_number claims).
  *
- * Point the API at it with these .env values, then paste a printed token into
- * the web app's "Sign in" box (or use it as `Authorization: Bearer <token>`):
+ * Point the API at it with these .env values, then create an account / sign in
+ * from the web app:
  *
  *   AUTH_JWKS_URI=http://localhost:3999/jwks.json
  *   AUTH_ISSUER_URL=http://localhost:3999/
  *   AUTH_AUDIENCE=splitsmart-api
  *
  * Run from the repo root:  pnpm --filter @splitsmart/api dev:auth
+ * Production replaces this wholesale with Auth0/Clerk — no API change.
  */
 import http from 'node:http';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -135,11 +137,6 @@ function readJson(req) {
     });
   });
 }
-
-const users = [
-  { sub: 'dev|maya', email: 'maya@example.in', name: 'Maya' },
-  { sub: 'dev|ravi', email: 'ravi@example.in', name: 'Ravi' },
-];
 
 // ---------------------------------------------------------------------------
 // Email verification (OTP). In production this is the OIDC provider's job —
@@ -279,46 +276,9 @@ http
       return;
     }
 
-    // GET /token                            → list the demo users (name + email)
-    // GET /token?user=maya                   → a signed token for a demo user
-    // GET /token?email=you@x.com&code=123456 → verify the OTP, then a signed
-    //   token for that identity (the API creates the account on first request)
-    if (url.pathname === '/token') {
-      const wanted = url.searchParams.get('user');
-      const email = url.searchParams.get('email')?.trim().toLowerCase();
-
-      if (email !== undefined) {
-        // Email sign-in requires a verified OTP code (see /otp/request).
-        const result = verifyOtp(email, url.searchParams.get('code') ?? '');
-        if (result.error) {
-          res.writeHead(401, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ error: result.error }));
-          return;
-        }
-        const name = result.name || email.split('@')[0];
-        const token = await mint(`dev|${email}`, email, name);
-        res.writeHead(200, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ token, name, email }));
-        return;
-      }
-
-      if (!wanted) {
-        res.writeHead(200, { 'content-type': 'application/json' });
-        res.end(JSON.stringify(users.map(({ sub, email, name }) => ({ sub, email, name }))));
-        return;
-      }
-      const user = users.find(
-        (u) => u.sub === wanted || u.name.toLowerCase() === wanted.toLowerCase(),
-      );
-      if (!user) {
-        res.writeHead(404, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ error: `unknown dev user "${wanted}"` }));
-        return;
-      }
-      const token = await mint(user.sub, user.email, user.name);
-      res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ token, name: user.name, email: user.email }));
-      return;
+    // GET /health → liveness probe the web login uses to detect the issuer.
+    if (url.pathname === '/health') {
+      return json(200, { ok: true });
     }
 
     res.writeHead(404);
@@ -336,16 +296,13 @@ http
     }
     throw err;
   })
-  .listen(PORT, async () => {
+  .listen(PORT, () => {
     console.log(`\nDev auth issuer running — JWKS at ${ISSUER}jwks.json\n`);
     console.log('Add to your .env:');
     console.log(`  AUTH_JWKS_URI=${ISSUER}jwks.json`);
     console.log(`  AUTH_ISSUER_URL=${ISSUER}`);
     console.log(`  AUTH_AUDIENCE=${AUDIENCE}\n`);
-    for (const u of users) {
-      const token = await mint(u.sub, u.email, u.name);
-      console.log(`── ${u.name} <${u.email}> ──\n${token}\n`);
-    }
-    console.log('Paste a token into the web app "Sign in" box. Tokens last 12h.\n');
+    console.log('Create an account or sign in from the web app — email/mobile + password.');
+    console.log(`Registered accounts: ${Object.keys(accounts).length}. Tokens last 12h.\n`);
     console.log('Leave this process running while you use the app. Ctrl+C to stop.');
   });

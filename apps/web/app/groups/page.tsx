@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
-import { api, ApiError, formatMoney, type Group } from '../../lib/api';
+import { api, ApiError, formatMoney, type DashboardGroup } from '../../lib/api';
 import {
   AppShell,
   Avatar,
@@ -15,13 +15,6 @@ import {
 } from '../../components/ui';
 import { Scene } from '../../components/Scene';
 
-/** A group plus this user's net balance in it (positive = owed to you). */
-interface GroupRow {
-  group: Group;
-  net: number | null;
-  currency: string;
-}
-
 function greetingWord(): string {
   const h = new Date().getHours();
   if (h < 12) return 'Good morning';
@@ -32,8 +25,10 @@ function greetingWord(): string {
 export default function GroupsPage() {
   const { token, ready, signOut } = useAuth();
   const router = useRouter();
-  const [rows, setRows] = useState<GroupRow[]>([]);
+  const [rows, setRows] = useState<DashboardGroup[]>([]);
   const [firstName, setFirstName] = useState('');
+  const [currency, setCurrency] = useState('INR');
+  const [overall, setOverall] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -43,25 +38,12 @@ export default function GroupsPage() {
     if (!token) return;
     setLoading(true);
     try {
-      const [me, groups] = await Promise.all([api.me(token), api.listGroups(token)]);
+      // One batched call replaces the old per-group getGroup + getBalances fan-out.
+      const [me, dash] = await Promise.all([api.me(token), api.dashboard(token)]);
       setFirstName(me.name.split(/\s+/)[0] ?? me.name);
-      // For each group, resolve this user's net from the balance engine.
-      const withBalances = await Promise.all(
-        groups.map(async (group): Promise<GroupRow> => {
-          try {
-            const [detail, balances] = await Promise.all([
-              api.getGroup(token, group.id),
-              api.getBalances(token, group.id),
-            ]);
-            const mine = detail.members.find((m) => m.userId === me.id);
-            const net = mine ? (balances.nets[group.defaultCurrency]?.[mine.id] ?? 0) : 0;
-            return { group, net, currency: group.defaultCurrency };
-          } catch {
-            return { group, net: null, currency: group.defaultCurrency };
-          }
-        }),
-      );
-      setRows(withBalances);
+      setRows(dash.groups);
+      setCurrency(dash.currency);
+      setOverall(dash.overallNetMinor);
       setLoadError(false);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
@@ -83,10 +65,7 @@ export default function GroupsPage() {
     void refresh();
   }, [refresh]);
 
-  // Overall position across groups sharing the primary currency (INR v1).
-  const currency = rows[0]?.currency ?? 'INR';
-  const overall = rows.reduce((sum, r) => sum + (r.net ?? 0), 0);
-  const newestGroupId = rows[0]?.group.id;
+  const newestGroupId = rows[0]?.id;
 
   return (
     <AppShell
@@ -144,51 +123,48 @@ export default function GroupsPage() {
           )}
 
           <div className="stack stagger" style={{ gap: 10 }}>
-            {rows.map(({ group, net, currency }) => (
-              <a
-                key={group.id}
-                href={`/groups/${group.id}`}
-                className="card card-pad card-hover between"
-                style={{ textDecoration: 'none', color: 'inherit' }}
-              >
-                <div className="row" style={{ gap: 13, minWidth: 0 }}>
-                  <Avatar name={group.name} size={46} />
-                  <div style={{ minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        fontSize: 16,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {group.name}
-                    </div>
-                    <div className="faint" style={{ fontSize: 13 }}>
-                      {net === null
-                        ? group.defaultCurrency
-                        : net === 0
-                          ? 'settled up'
-                          : net > 0
-                            ? 'you are owed'
-                            : 'you owe'}
+            {rows.map((g) => {
+              const net = g.myNetMinor;
+              return (
+                <a
+                  key={g.id}
+                  href={`/groups/${g.id}`}
+                  className="card card-pad card-hover between"
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                >
+                  <div className="row" style={{ gap: 13, minWidth: 0 }}>
+                    <Avatar name={g.name} size={46} />
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 16,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {g.name}
+                      </div>
+                      <div className="faint" style={{ fontSize: 13 }}>
+                        {net === 0 ? 'settled up' : net > 0 ? 'you are owed' : 'you owe'}
+                      </div>
                     </div>
                   </div>
-                </div>
-                {net !== null && net !== 0 ? (
-                  <div className="bal-side">
-                    <div className={`v ${net > 0 ? 'pos' : 'neg'}`}>
-                      {formatMoney(Math.abs(net), currency)}
+                  {net !== 0 ? (
+                    <div className="bal-side">
+                      <div className={`v ${net > 0 ? 'pos' : 'neg'}`}>
+                        {formatMoney(Math.abs(net), g.defaultCurrency)}
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <span className="faint" aria-hidden style={{ fontSize: 18 }}>
-                    ›
-                  </span>
-                )}
-              </a>
-            ))}
+                  ) : (
+                    <span className="faint" aria-hidden style={{ fontSize: 18 }}>
+                      ›
+                    </span>
+                  )}
+                </a>
+              );
+            })}
           </div>
         </>
       )}
