@@ -98,11 +98,19 @@ export class DashboardService {
       },
     });
 
+    // Read every group's balances in parallel (like forUser) so a cache miss
+    // or slow Redis on one group doesn't serialize the whole screen.
+    const perGroup = await Promise.all(
+      myMemberships.map(async (mine) => ({
+        mine,
+        settlements: (await this.balances.getForGroup(mine.groupId)).settlements,
+      })),
+    );
+
     const byFriend = new Map<string, FriendBalance>();
 
-    for (const mine of myMemberships) {
+    for (const { mine, settlements } of perGroup) {
       const group = mine.group;
-      const { settlements } = await this.balances.getForGroup(group.id);
       const memberById = new Map(group.members.map((m) => [m.id, m]));
 
       const upsert = (otherMemberId: string): FriendBalance | null => {
