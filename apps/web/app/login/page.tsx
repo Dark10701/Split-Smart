@@ -52,7 +52,9 @@ export default function LoginPage() {
 
   const finish = (t: string): void => {
     signIn(t);
-    router.push('/groups');
+    // Honor ?next=/join/<token> etc. — internal paths only, never external URLs.
+    const next = new URLSearchParams(window.location.search).get('next');
+    router.push(next && next.startsWith('/') && !next.startsWith('//') ? next : '/groups');
   };
 
   const post = async (path: string, body: unknown): Promise<Record<string, unknown>> => {

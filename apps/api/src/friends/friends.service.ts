@@ -34,6 +34,13 @@ export interface FriendsOverview {
   blocked: PublicUser[];
 }
 
+/** A friend's profile page: identity + shared context. */
+export interface FriendProfile {
+  user: PublicUser;
+  relationship: 'friends' | 'request_sent' | 'request_received' | 'none';
+  mutualGroups: Array<{ id: string; name: string }>;
+}
+
 function toPublic(u: User): PublicUser {
   return {
     id: u.id,
@@ -130,6 +137,54 @@ export class FriendsService {
     }
     out.friends.sort((a, b) => a.name.localeCompare(b.name));
     return out;
+  }
+
+  /**
+   * A friend's profile. Visible only to accepted friends or group-mates —
+   * anyone else (or anyone the target blocked) gets a 404, not a 403, so the
+   * endpoint doesn't leak who exists. Contact details (phone/email) are shown
+   * to accepted friends only.
+   */
+  async profile(meId: string, userId: string): Promise<FriendProfile> {
+    if (meId === userId) throw new BadRequestException('That is you — use your own profile');
+    const target = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!target) throw new NotFoundException('User not found');
+
+    const edge = await this.edge(meId, userId);
+    if (edge?.status === 'blocked' && edge.requesterId !== meId) {
+      throw new NotFoundException('User not found'); // they blocked me → invisible
+    }
+
+    // Mutual groups: both have an active membership.
+    const memberships = await this.prisma.groupMember.findMany({
+      where: { userId: { in: [meId, userId] }, removedAt: null },
+      select: { userId: true, group: { select: { id: true, name: true } } },
+    });
+    const mineGroups = new Set(memberships.filter((m) => m.userId === meId).map((m) => m.group.id));
+    const mutualGroups = memberships
+      .filter((m) => m.userId === userId && mineGroups.has(m.group.id))
+      .map((m) => m.group);
+
+    const isFriend = edge?.status === 'accepted';
+    if (!isFriend && mutualGroups.length === 0) {
+      throw new NotFoundException('User not found'); // no shared context → invisible
+    }
+
+    const relationship: FriendProfile['relationship'] = isFriend
+      ? 'friends'
+      : edge?.status === 'pending'
+        ? edge.requesterId === meId
+          ? 'request_sent'
+          : 'request_received'
+        : 'none';
+
+    const user = toPublic(target);
+    if (!isFriend) {
+      // Group-mates see identity + UPI (needed to settle), not contact details.
+      user.phone = null;
+      user.email = '';
+    }
+    return { user, relationship, mutualGroups };
   }
 
   /** Send (or auto-accept a crossing) friend request. Idempotent. */

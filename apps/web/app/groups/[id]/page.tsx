@@ -16,6 +16,7 @@ import {
   type ActivityEntry,
   type Transfer,
   type Comment,
+  type PublicUser,
 } from '../../../lib/api';
 import {
   AppShell,
@@ -599,19 +600,45 @@ function ManagePeopleModal({
   const [copied, setCopied] = useState(false);
   const [guestName, setGuestName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [friends, setFriends] = useState<PublicUser[] | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [addError, setAddError] = useState<string | null>(null);
+  const [added, setAdded] = useState<string | null>(null);
 
-  const invite = async (): Promise<void> => {
-    setBusy(true);
-    try {
-      const { token: inv } = await api.createInvite(token, group.id);
-      setInviteLink(`${window.location.origin}/join/${inv}`);
-      setCopied(false);
-    } catch {
-      setInviteLink('error');
-    } finally {
-      setBusy(false);
-    }
-  };
+  // The group's permanent invite link (the API reuses the same token).
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .createInvite(token, group.id)
+      .then(({ token: inv }) => {
+        if (!cancelled) setInviteLink(`${window.location.origin}/join/${inv}`);
+      })
+      .catch(() => {
+        if (!cancelled) setInviteLink('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, group.id]);
+
+  // Friends who can be added (accepted friends not already in the group).
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .friendsOverview(token)
+      .then((ov) => {
+        if (!cancelled) setFriends(ov.friends);
+      })
+      .catch(() => {
+        if (!cancelled) setFriends([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  const memberUserIds = new Set(group.members.map((m) => m.userId));
+  const addable = (friends ?? []).filter((f) => !memberUserIds.has(f.id));
 
   const copyInvite = async (): Promise<void> => {
     if (!inviteLink || inviteLink === 'error') return;
@@ -621,6 +648,57 @@ function ManagePeopleModal({
     } catch {
       /* clipboard blocked — link still shown for manual copy */
     }
+  };
+
+  const shareInvite = async (): Promise<void> => {
+    if (!inviteLink || inviteLink === 'error') return;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `Join ${group.name} on SplitSmart`,
+          text: `Join "${group.name}" to split expenses with us:`,
+          url: inviteLink,
+        });
+        return;
+      }
+      throw new Error('no share');
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return; // user closed the sheet
+      void copyInvite(); // desktop fallback
+    }
+  };
+
+  const toggleFriend = (id: string): void =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const addSelected = async (): Promise<void> => {
+    if (selected.size === 0) return;
+    setBusy(true);
+    setAddError(null);
+    setAdded(null);
+    const chosen = addable.filter((f) => selected.has(f.id));
+    const failed: string[] = [];
+    for (const f of chosen) {
+      try {
+        await api.addMember(token, group.id, f.email);
+      } catch (e) {
+        // 409 = already a member (raced in via invite) — that's fine.
+        if (!(e instanceof ApiError && e.status === 409)) failed.push(f.name);
+      }
+    }
+    setSelected(new Set());
+    setBusy(false);
+    if (failed.length > 0) {
+      setAddError(`Could not add ${failed.join(', ')} — only group admins can add members.`);
+    } else {
+      setAdded(`Added ${chosen.length} member${chosen.length === 1 ? '' : 's'}`);
+    }
+    onChanged();
   };
 
   const addGuest = async (): Promise<void> => {
@@ -652,30 +730,67 @@ function ManagePeopleModal({
         ))}
       </div>
 
-      <div className="section-title">Invite by link</div>
-      {inviteLink && inviteLink !== 'error' ? (
-        <div className="row" style={{ marginBottom: 18 }}>
-          <input className="input mono" readOnly value={inviteLink} />
-          <button className="btn btn-primary btn-sm" onClick={() => void copyInvite()}>
-            {copied ? 'Copied ✓' : 'Copy'}
+      <div className="section-title">Invite link</div>
+      {inviteLink === 'error' ? (
+        <p className="error" style={{ marginTop: 0 }}>
+          Could not load the invite link. Is the API running?
+        </p>
+      ) : inviteLink ? (
+        <>
+          <input className="input mono" readOnly value={inviteLink} style={{ marginBottom: 8 }} />
+          <div className="row" style={{ marginBottom: 18 }}>
+            <button className="btn btn-primary btn-block" onClick={() => void shareInvite()}>
+              Share invite
+            </button>
+            <button className="btn btn-ghost btn-block" onClick={() => void copyInvite()}>
+              {copied ? 'Copied ✓' : 'Copy link'}
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="skeleton" style={{ height: 44, marginBottom: 18 }} />
+      )}
+
+      <div className="section-title">Add friends</div>
+      {friends === null ? (
+        <div className="skeleton" style={{ height: 44, marginBottom: 18 }} />
+      ) : addable.length === 0 ? (
+        <p className="faint" style={{ fontSize: 13, margin: '0 0 18px' }}>
+          {friends.length === 0
+            ? 'Add friends from the Friends tab first — then you can add them here in one tap.'
+            : 'All your friends are already in this group.'}
+        </p>
+      ) : (
+        <div style={{ marginBottom: 18 }}>
+          <div className="stack" style={{ gap: 8 }}>
+            {addable.map((f) => (
+              <label key={f.id} className="row" style={{ gap: 10, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  className="check"
+                  checked={selected.has(f.id)}
+                  onChange={() => toggleFriend(f.id)}
+                />
+                <Avatar name={f.name} size={30} color={f.avatarColor} />
+                <span style={{ fontWeight: 600 }}>{f.name}</span>
+              </label>
+            ))}
+          </div>
+          {addError && <p className="error">{addError}</p>}
+          {added && <p className="success-text">{added}</p>}
+          <button
+            className="btn btn-primary btn-block"
+            style={{ marginTop: 10 }}
+            disabled={busy || selected.size === 0}
+            onClick={() => void addSelected()}
+          >
+            {busy
+              ? 'Adding…'
+              : selected.size > 0
+                ? `Add ${selected.size} to ${group.name}`
+                : 'Select friends to add'}
           </button>
         </div>
-      ) : (
-        <>
-          {inviteLink === 'error' && (
-            <p className="error" style={{ marginTop: 0 }}>
-              Could not create an invite link. Is the API running?
-            </p>
-          )}
-          <button
-            className="btn btn-ghost btn-block"
-            style={{ marginBottom: 18 }}
-            onClick={() => void invite()}
-            disabled={busy}
-          >
-            Create invite link
-          </button>
-        </>
       )}
 
       <div className="section-title">Add a guest (no account needed)</div>

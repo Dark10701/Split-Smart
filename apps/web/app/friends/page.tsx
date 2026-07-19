@@ -261,9 +261,9 @@ export default function FriendsPage() {
   );
 }
 
-function PersonCell({ user, sub }: { user: PublicUser; sub?: string | null }) {
-  return (
-    <div className="row" style={{ gap: 12, minWidth: 0 }}>
+function PersonCell({ user, sub, href }: { user: PublicUser; sub?: string | null; href?: string }) {
+  const inner = (
+    <>
       <Avatar name={user.name} size={42} color={user.avatarColor} />
       <div style={{ minWidth: 0 }}>
         <div
@@ -282,6 +282,22 @@ function PersonCell({ user, sub }: { user: PublicUser; sub?: string | null }) {
           </div>
         )}
       </div>
+    </>
+  );
+  if (href) {
+    return (
+      <a
+        href={href}
+        className="row"
+        style={{ gap: 12, minWidth: 0, color: 'inherit', textDecoration: 'none' }}
+      >
+        {inner}
+      </a>
+    );
+  }
+  return (
+    <div className="row" style={{ gap: 12, minWidth: 0 }}>
+      {inner}
     </div>
   );
 }
@@ -324,6 +340,7 @@ function FriendCard({
       <div className="between">
         <PersonCell
           user={user}
+          href={`/friends/${user.id}`}
           sub={
             net === 0
               ? 'all settled'

@@ -70,6 +70,15 @@ export class GroupsController {
     return this.groups.createInvite(id, email);
   }
 
+  @Get('groups/invites/:token/preview')
+  async invitePreview(
+    @CurrentUser() claims: AuthClaims,
+    @Param('token') token: string,
+  ): Promise<{ groupId: string; groupName: string; memberCount: number; alreadyMember: boolean }> {
+    const user = await this.users.resolveFromClaims(claims);
+    return this.groups.getInvitePreview(token, user.id);
+  }
+
   @Post('groups/join')
   async join(@CurrentUser() claims: AuthClaims, @Body() body: unknown): Promise<GroupMember> {
     const { token } = validate(joinGroupSchema, body);
