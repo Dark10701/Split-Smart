@@ -18,7 +18,12 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { UsersService } from '../users/users.service';
-import { FriendsService, type FriendsOverview, type FriendSearchHit } from './friends.service';
+import {
+  FriendsService,
+  type FriendsOverview,
+  type FriendSearchHit,
+  type FriendProfile,
+} from './friends.service';
 
 @Controller('friends')
 @UseGuards(JwtAuthGuard)
@@ -45,6 +50,14 @@ export class FriendsController {
     const parsed = friendSearchQuerySchema.safeParse(query);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     return this.friends.search(await this.meId(claims), parsed.data.q);
+  }
+
+  @Get(':userId/profile')
+  async profile(
+    @CurrentUser() claims: AuthClaims,
+    @Param('userId', ParseUUIDPipe) userId: string,
+  ): Promise<FriendProfile> {
+    return this.friends.profile(await this.meId(claims), userId);
   }
 
   @Post('requests')

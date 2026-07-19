@@ -74,11 +74,56 @@ describe('GroupsService', () => {
 
   it('createInvite() does not enqueue without an email', async () => {
     const create = jest.fn().mockResolvedValue({ id: 'i1' });
+    const findFirst = jest.fn().mockResolvedValue(null);
     const sendInvite = jest.fn();
-    const svc = new GroupsService({ invitation: { create } } as unknown as PrismaService, {
-      sendInvite,
-    });
+    const svc = new GroupsService(
+      { invitation: { create, findFirst } } as unknown as PrismaService,
+      { sendInvite },
+    );
     await svc.createInvite('g1');
     expect(sendInvite).not.toHaveBeenCalled();
+    expect(create).toHaveBeenCalled();
+  });
+
+  it('createInvite() reuses the existing shareable link token', async () => {
+    const create = jest.fn();
+    const findFirst = jest.fn().mockResolvedValue({
+      id: 'i1',
+      token: 'permanent-token',
+      email: null,
+      acceptedAt: null,
+      expiresAt: null,
+    });
+    const svc = new GroupsService(
+      { invitation: { create, findFirst } } as unknown as PrismaService,
+      { sendInvite: jest.fn() },
+    );
+    await expect(svc.createInvite('g1')).resolves.toEqual({ token: 'permanent-token' });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('join() keeps shareable link invites open but consumes email invites', async () => {
+    const linkInvite = {
+      id: 'i1',
+      groupId: 'g1',
+      token: 't',
+      email: null,
+      acceptedAt: null,
+      expiresAt: null,
+    };
+    const update = jest.fn();
+    const member = { id: 'm1' };
+    const prisma = {
+      invitation: { findUnique: jest.fn().mockResolvedValue(linkInvite), update },
+      groupMember: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockReturnValue(member),
+      },
+      $transaction: jest.fn((ops: unknown[]) => Promise.resolve(ops.map(() => member))),
+    } as unknown as PrismaService;
+    const svc = new GroupsService(prisma);
+    await svc.join('u1', 't');
+    // Link invite (no email): acceptedAt must NOT be stamped — link stays live.
+    expect(update).not.toHaveBeenCalled();
   });
 });

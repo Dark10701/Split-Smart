@@ -26,6 +26,20 @@ export interface FriendSearchHit extends PublicUser {
   relationship: 'none' | 'friends' | 'request_sent' | 'request_received' | 'blocked';
 }
 
+/** A friend's profile page payload. */
+export interface FriendProfile {
+  user: PublicUser;
+  relationship: 'friends' | 'request_sent' | 'request_received' | 'none';
+  mutualGroups: Array<{ id: string; name: string }>;
+}
+
+export interface InvitePreview {
+  groupId: string;
+  groupName: string;
+  memberCount: number;
+  alreadyMember: boolean;
+}
+
 export interface FriendsOverview {
   friends: PublicUser[];
   incoming: Array<{ friendshipId: string; user: PublicUser }>;
@@ -217,6 +231,14 @@ export const api = {
     }).then(unwrap<NotificationPref[]>),
   friendsOverview: (token: string) =>
     fetch(`${API_URL}/friends`, { headers: headers(token) }).then(unwrap<FriendsOverview>),
+  friendProfile: (token: string, userId: string) =>
+    fetch(`${API_URL}/friends/${userId}/profile`, { headers: headers(token) }).then(
+      unwrap<FriendProfile>,
+    ),
+  invitePreview: (token: string, inviteToken: string) =>
+    fetch(`${API_URL}/groups/invites/${encodeURIComponent(inviteToken)}/preview`, {
+      headers: headers(token),
+    }).then(unwrap<InvitePreview>),
   searchFriends: (token: string, q: string) =>
     fetch(`${API_URL}/friends/search?q=${encodeURIComponent(q)}`, {
       headers: headers(token),
@@ -269,6 +291,12 @@ export const api = {
       headers: headers(token),
       body: JSON.stringify({}),
     }).then(unwrap<{ token: string }>),
+  addMember: (token: string, groupId: string, email: string) =>
+    fetch(`${API_URL}/groups/${groupId}/members`, {
+      method: 'POST',
+      headers: headers(token),
+      body: JSON.stringify({ email }),
+    }).then(unwrap<GroupMember>),
   addGuest: (token: string, groupId: string, guestName: string) =>
     fetch(`${API_URL}/groups/${groupId}/members`, {
       method: 'POST',
