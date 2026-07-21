@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="sm-mask" x1="96" y1="96" x2="416" y2="416" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+  </defs>
+  <!-- Full-bleed background so the OS mask can round it however it likes. -->
+  <rect width="512" height="512" fill="url(#sm-mask)"/>
+  <!-- Mark centered inside the ~80% safe zone. -->
+  <g transform="translate(256 256) scale(6.4) translate(-16 -16)">
+    <circle cx="10.5" cy="11" r="2.5" fill="#fff"/>
+    <circle cx="21.5" cy="11" r="2.5" fill="#fff" fill-opacity=".88"/>
+    <path d="M10.5 17v1.1c0 1.05.85 1.9 1.9 1.9h7.2c1.05 0 1.9.85 1.9 1.9V24M21.5 17v3" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="21.5" cy="24" r="2.5" fill="#fff"/>
+    <path d="M20.35 24h2.3" stroke="#5B39D5" stroke-width="1.2" stroke-linecap="round"/>
+  </g>
+</svg>

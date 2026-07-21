@@ -1182,3 +1182,22 @@ h3 {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ---- Safe-area insets: installed to the home screen on notched phones
+   (viewport-fit=cover). Insets are 0 in normal browser tabs, so these are
+   no-ops there. Scoped to the full-bleed mobile layout. ---- */
+@media (max-width: 499px) {
+  .topbar {
+    padding-top: calc(16px + env(safe-area-inset-top));
+  }
+  .bottom-nav {
+    height: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+  }
+  .container {
+    padding-bottom: calc(var(--bottom-nav-h) + 24px + env(safe-area-inset-bottom));
+  }
+  .app-frame:has(.bottom-nav) .fab {
+    bottom: calc(var(--bottom-nav-h) + 16px + env(safe-area-inset-bottom));
+  }
+}
